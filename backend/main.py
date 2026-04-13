@@ -3,6 +3,7 @@ from fastapi.middleware.cors import CORSMiddleware
 
 from logger import get_logger
 from routers.auth import router as auth_router
+from routers.student_dashboard import router as student_dashboard_router
 from routers.system import router as system_router
 
 logger = get_logger(__name__)
@@ -40,3 +41,4 @@ def health_check():
 
 app.include_router(system_router)
 app.include_router(auth_router)
+app.include_router(student_dashboard_router)
