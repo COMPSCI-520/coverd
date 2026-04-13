@@ -9,6 +9,7 @@ class User(BaseModel):
     hashed_password: str
     role: Literal["student", "manager"]
     full_name: str
+    is_international: bool = False
 
     @classmethod
     def from_mongo(cls, doc: dict) -> "User":
