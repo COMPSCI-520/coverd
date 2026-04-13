@@ -1,12 +1,31 @@
 import { useState } from "react";
+import { useNavigate } from "react-router-dom";
+import { loginRequest } from "../api/auth";
+import { useAuth } from "../context/AuthContext";
 
 export default function LoginPage() {
   const [email, setEmail] = useState("");
   const [password, setPassword] = useState("");
+  const [error, setError] = useState(null);
+  const [loading, setLoading] = useState(false);
 
-  function handleSubmit(event) {
+  const { login } = useAuth();
+  const navigate = useNavigate();
+
+  async function handleSubmit(event) {
     event.preventDefault();
-    console.log("Login submitted:", { email, password });
+    setError(null);
+    setLoading(true);
+
+    try {
+      const data = await loginRequest(email, password);
+      login(data);
+      navigate("/dashboard");
+    } catch {
+      setError("Login failed. Check your email and password.");
+    } finally {
+      setLoading(false);
+    }
   }
 
   return (
@@ -16,6 +35,8 @@ export default function LoginPage() {
         <p style={styles.subtitle}>UMass Shift Management</p>
 
         <h2 style={styles.heading}>Sign In</h2>
+
+        {error && <p style={styles.error}>{error}</p>}
 
         <form onSubmit={handleSubmit} style={styles.form}>
           <label style={styles.label}>Email address</label>
@@ -38,8 +59,8 @@ export default function LoginPage() {
             required
           />
 
-          <button type="submit" style={styles.button}>
-            Sign In
+          <button type="submit" style={styles.button} disabled={loading}>
+            {loading ? "Signing in…" : "Sign In"}
           </button>
         </form>
 
@@ -53,22 +74,22 @@ export default function LoginPage() {
 
 const styles = {
   page: {
-  minHeight: "100vh",
-  width: "100%",
-  display: "flex",
-  justifyContent: "center",
-  alignItems: "center",
-  background: "#f4f7ff",
-  fontFamily: "Arial, sans-serif",
-},
+    minHeight: "100vh",
+    width: "100%",
+    display: "flex",
+    justifyContent: "center",
+    alignItems: "center",
+    background: "#f4f7ff",
+    fontFamily: "Arial, sans-serif",
+  },
   card: {
-  width: "100%",
-  maxWidth: "360px",
-  background: "#fff",
-  padding: "32px",
-  borderRadius: "12px",
-  boxShadow: "0 8px 24px rgba(0,0,0,0.08)",
-},
+    width: "100%",
+    maxWidth: "360px",
+    background: "#fff",
+    padding: "32px",
+    borderRadius: "12px",
+    boxShadow: "0 8px 24px rgba(0,0,0,0.08)",
+  },
   logo: {
     margin: 0,
     textAlign: "center",
@@ -86,6 +107,15 @@ const styles = {
   heading: {
     marginBottom: "18px",
     fontSize: "1.3rem",
+  },
+  error: {
+    background: "#fff0f0",
+    color: "#c0392b",
+    border: "1px solid #f5c6cb",
+    borderRadius: "8px",
+    padding: "10px 12px",
+    fontSize: "0.9rem",
+    marginBottom: "12px",
   },
   form: {
     display: "flex",
@@ -112,6 +142,7 @@ const styles = {
     fontSize: "1rem",
     fontWeight: "600",
     cursor: "pointer",
+    opacity: 1,
   },
   footer: {
     marginTop: "16px",
