@@ -1,8 +1,9 @@
 import { useState, useEffect } from "react";
 import { useNavigate } from "react-router-dom";
 import { useAuth } from "../context/AuthContext";
+import { getAvailableShifts, claimShift, requestDrop } from "../api/marketplace";
 
-const BASE_URL = "http://localhost:8000";
+const BASE_URL = import.meta.env.VITE_API_URL ?? "http://localhost:8000";
 
 const token = () => {
   try {
@@ -85,7 +86,7 @@ function fmtDate(d) {
   });
 }
 
-function ShiftTable({ shifts }) {
+function ShiftTable({ shifts, onDrop, droppingId }) {
   if (!shifts || shifts.length === 0) {
     return (
       <p style={{ color: "#6b7280", fontSize: "14px", padding: "20px" }}>
@@ -94,11 +95,15 @@ function ShiftTable({ shifts }) {
     );
   }
 
+  const cols = onDrop
+    ? ["Day", "Location", "Time", "Hours", "Status", ""]
+    : ["Day", "Location", "Time", "Hours", "Status"];
+
   return (
     <table style={{ width: "100%", borderCollapse: "collapse" }}>
       <thead>
         <tr style={{ background: "#f9fafb" }}>
-          {["Day", "Location", "Time", "Hours", "Status"].map((h) => (
+          {cols.map((h) => (
             <th
               key={h}
               style={{
@@ -126,46 +131,43 @@ function ShiftTable({ shifts }) {
                 i < shifts.length - 1 ? "1px solid #f3f4f6" : "none",
             }}
           >
-            <td
-              style={{
-                padding: "14px 20px",
-                fontSize: "14px",
-                fontWeight: "500",
-                color: "#111",
-              }}
-            >
+            <td style={{ padding: "14px 20px", fontSize: "14px", fontWeight: "500", color: "#111" }}>
               {fmtDate(shift.shift_date)}
             </td>
-            <td
-              style={{
-                padding: "14px 20px",
-                fontSize: "14px",
-                color: "#374151",
-              }}
-            >
+            <td style={{ padding: "14px 20px", fontSize: "14px", color: "#374151" }}>
               {shift.location}
             </td>
-            <td
-              style={{
-                padding: "14px 20px",
-                fontSize: "14px",
-                color: "#374151",
-              }}
-            >
+            <td style={{ padding: "14px 20px", fontSize: "14px", color: "#374151" }}>
               {fmtTime(shift.start_time)} – {fmtTime(shift.end_time)}
             </td>
-            <td
-              style={{
-                padding: "14px 20px",
-                fontSize: "14px",
-                color: "#374151",
-              }}
-            >
+            <td style={{ padding: "14px 20px", fontSize: "14px", color: "#374151" }}>
               {shift.hours}h
             </td>
             <td style={{ padding: "14px 20px" }}>
               <StatusBadge status={shift.status} />
             </td>
+            {onDrop && (
+              <td style={{ padding: "14px 20px" }}>
+                {shift.status === "assigned" && (
+                  <button
+                    onClick={() => onDrop(shift.id)}
+                    disabled={droppingId === shift.id}
+                    style={{
+                      background: "none",
+                      border: "1px solid #e5e7eb",
+                      borderRadius: "6px",
+                      padding: "4px 12px",
+                      fontSize: "12px",
+                      color: droppingId === shift.id ? "#9ca3af" : "#ef4444",
+                      cursor: droppingId === shift.id ? "not-allowed" : "pointer",
+                      fontFamily: "inherit",
+                    }}
+                  >
+                    {droppingId === shift.id ? "Requesting…" : "Request Drop"}
+                  </button>
+                )}
+              </td>
+            )}
           </tr>
         ))}
       </tbody>
@@ -197,6 +199,14 @@ export default function StudentDashboard() {
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState(null);
 
+  const [mktShifts, setMktShifts] = useState([]);
+  const [mktLoading, setMktLoading] = useState(false);
+  const [mktError, setMktError] = useState(null);
+  const [claimingId, setClaimingId] = useState(null);
+  const [claimFeedback, setClaimFeedback] = useState(null);
+  const [droppingId, setDroppingId] = useState(null);
+  const [dropFeedback, setDropFeedback] = useState(null);
+
   function handleLogout() {
     logout();
     sessionStorage.removeItem("coverd_auth");
@@ -218,9 +228,59 @@ export default function StudentDashboard() {
     }
   };
 
+  const loadMarketplace = async () => {
+    setMktLoading(true);
+    setMktError(null);
+    setClaimFeedback(null);
+    try {
+      const authToken = token();
+      const res = await getAvailableShifts(authToken);
+      setMktShifts(res.shifts ?? []);
+    } catch {
+      setMktError("Could not load marketplace shifts.");
+    } finally {
+      setMktLoading(false);
+    }
+  };
+
+  const handleClaim = async (shiftId) => {
+    setClaimingId(shiftId);
+    setClaimFeedback(null);
+    try {
+      const authToken = token();
+      await claimShift(authToken, shiftId);
+      setClaimFeedback({ type: "success", message: "Shift claimed! It now appears in your schedule." });
+      setMktShifts((prev) => prev.filter((s) => s.id !== shiftId));
+      loadDashboard();
+    } catch (err) {
+      setClaimFeedback({ type: "error", message: err.message });
+    } finally {
+      setClaimingId(null);
+    }
+  };
+
+  const handleDrop = async (shiftId) => {
+    setDroppingId(shiftId);
+    setDropFeedback(null);
+    try {
+      const authToken = token();
+      await requestDrop(authToken, shiftId);
+      setDropFeedback({ type: "success", message: "Drop request submitted. Awaiting manager approval." });
+      loadDashboard();
+    } catch (err) {
+      setDropFeedback({ type: "error", message: err.message });
+    } finally {
+      setDroppingId(null);
+    }
+  };
+
   useEffect(() => {
     loadDashboard();
   }, []);
+
+  useEffect(() => {
+    if (tab === "marketplace") loadMarketplace();
+  }, [tab]);
 
   if (loading) {
     return (
@@ -583,7 +643,20 @@ export default function StudentDashboard() {
                   This week&apos;s shifts
                 </span>
               </div>
-              <ShiftTable shifts={weekly_shifts} />
+              {dropFeedback && (
+                <div style={{
+                  margin: "12px 20px 0",
+                  padding: "10px 14px",
+                  borderRadius: "8px",
+                  fontSize: "13px",
+                  background: dropFeedback.type === "success" ? "#f0fdf4" : "#fff0f0",
+                  color: dropFeedback.type === "success" ? "#15803d" : "#c0392b",
+                  border: `1px solid ${dropFeedback.type === "success" ? "#bbf7d0" : "#f5c6cb"}`,
+                }}>
+                  {dropFeedback.message}
+                </div>
+              )}
+              <ShiftTable shifts={weekly_shifts} onDrop={handleDrop} droppingId={droppingId} />
             </div>
 
             <div
@@ -629,21 +702,19 @@ export default function StudentDashboard() {
               Shift Marketplace
             </h1>
             <p style={{ fontSize: "14px", color: "#6b7280", margin: "0 0 20px" }}>
-              Marketplace browsing and pickup flow is not integrated yet.
+              Pick up available shifts dropped by your peers.
             </p>
 
             {show_warning && (
-              <div
-                style={{
-                  background: "#fffbeb",
-                  border: "1px solid #fcd34d",
-                  borderRadius: "8px",
-                  padding: "12px 16px",
-                  marginBottom: "20px",
-                  display: "flex",
-                  gap: "10px",
-                }}
-              >
+              <div style={{
+                background: "#fffbeb",
+                border: "1px solid #fcd34d",
+                borderRadius: "8px",
+                padding: "12px 16px",
+                marginBottom: "20px",
+                display: "flex",
+                gap: "10px",
+              }}>
                 <span>⚠️</span>
                 <p style={{ margin: 0, fontSize: "13px", color: "#92400e" }}>
                   <strong>International student limit:</strong> {warning_message}
@@ -651,18 +722,99 @@ export default function StudentDashboard() {
               </div>
             )}
 
-            <div style={card}>
-              <div style={{ fontSize: "15px", fontWeight: "600", marginBottom: "8px" }}>
-                Available shifts this week
+            {claimFeedback && (
+              <div style={{
+                padding: "10px 14px",
+                borderRadius: "8px",
+                fontSize: "13px",
+                marginBottom: "16px",
+                background: claimFeedback.type === "success" ? "#f0fdf4" : "#fff0f0",
+                color: claimFeedback.type === "success" ? "#15803d" : "#c0392b",
+                border: `1px solid ${claimFeedback.type === "success" ? "#bbf7d0" : "#f5c6cb"}`,
+              }}>
+                {claimFeedback.message}
               </div>
-              <div style={{ fontSize: "28px", fontWeight: "700", marginBottom: "6px" }}>
-                {marketplace_available_count}
+            )}
+
+            {mktLoading && (
+              <div style={{ ...card, color: "#6b7280", fontSize: "14px" }}>
+                Loading available shifts…
               </div>
-              <div style={{ fontSize: "13px", color: "#6b7280" }}>
-                Full marketplace list and pickup actions can be connected once the
-                marketplace backend endpoints are ready.
+            )}
+
+            {mktError && (
+              <div style={{
+                padding: "12px 16px",
+                borderRadius: "8px",
+                background: "#fff0f0",
+                color: "#c0392b",
+                border: "1px solid #f5c6cb",
+                fontSize: "13px",
+                marginBottom: "16px",
+              }}>
+                {mktError}
+                <button onClick={loadMarketplace} style={{
+                  marginLeft: "12px",
+                  background: "none",
+                  border: "none",
+                  color: "#2563eb",
+                  cursor: "pointer",
+                  fontSize: "13px",
+                  fontFamily: "inherit",
+                }}>
+                  Retry
+                </button>
               </div>
-            </div>
+            )}
+
+            {!mktLoading && !mktError && mktShifts.length === 0 && (
+              <div style={{ ...card, color: "#6b7280", fontSize: "14px", textAlign: "center", padding: "40px" }}>
+                No shifts available in the marketplace right now.
+              </div>
+            )}
+
+            {!mktLoading && mktShifts.length > 0 && (
+              <div style={{ display: "flex", flexDirection: "column", gap: "12px" }}>
+                {mktShifts.map((shift) => (
+                  <div key={shift.id} style={{
+                    ...card,
+                    display: "flex",
+                    alignItems: "center",
+                    justifyContent: "space-between",
+                    gap: "16px",
+                  }}>
+                    <div style={{ flex: 1 }}>
+                      <div style={{ fontSize: "15px", fontWeight: "600", marginBottom: "4px" }}>
+                        {shift.location}
+                      </div>
+                      <div style={{ fontSize: "13px", color: "#6b7280" }}>
+                        {fmtDate(shift.shift_date)} &nbsp;·&nbsp;
+                        {fmtTime(shift.start_time)} – {fmtTime(shift.end_time)} &nbsp;·&nbsp;
+                        {shift.hours}h
+                      </div>
+                    </div>
+                    <button
+                      onClick={() => handleClaim(shift.id)}
+                      disabled={claimingId === shift.id}
+                      style={{
+                        background: claimingId === shift.id ? "#e5e7eb" : "#2563eb",
+                        color: claimingId === shift.id ? "#9ca3af" : "#fff",
+                        border: "none",
+                        borderRadius: "8px",
+                        padding: "9px 18px",
+                        fontSize: "13px",
+                        fontWeight: "600",
+                        cursor: claimingId === shift.id ? "not-allowed" : "pointer",
+                        fontFamily: "inherit",
+                        whiteSpace: "nowrap",
+                      }}
+                    >
+                      {claimingId === shift.id ? "Claiming…" : "Pick up shift"}
+                    </button>
+                  </div>
+                ))}
+              </div>
+            )}
           </>
         )}
       </div>
