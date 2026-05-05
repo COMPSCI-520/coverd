@@ -2,10 +2,15 @@ import { Navigate, Route, BrowserRouter as Router, Routes } from "react-router-d
 import { AuthProvider, useAuth } from "./context/AuthContext";
 import LoginPage from "./pages/LoginPage";
 import StudentDashboard from "./pages/StudentDashboard";
+import ManagerDashboard from "./pages/ManagerDashboard";
 
-function ProtectedRoute({ children }) {
+function ProtectedRoute({ children, requiredRole }) {
   const { user } = useAuth();
-  return user ? children : <Navigate to="/" replace />;
+  if (!user) return <Navigate to="/" replace />;
+  if (requiredRole && user.role !== requiredRole) {
+    return <Navigate to={user.role === "manager" ? "/manager" : "/dashboard"} replace />;
+  }
+  return children;
 }
 
 export default function App() {
@@ -17,8 +22,16 @@ export default function App() {
           <Route
             path="/dashboard"
             element={
-              <ProtectedRoute>
+              <ProtectedRoute requiredRole="student">
                 <StudentDashboard />
+              </ProtectedRoute>
+            }
+          />
+          <Route
+            path="/manager"
+            element={
+              <ProtectedRoute requiredRole="manager">
+                <ManagerDashboard />
               </ProtectedRoute>
             }
           />

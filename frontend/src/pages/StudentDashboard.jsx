@@ -2,6 +2,7 @@ import { useState, useEffect } from "react";
 import { useNavigate } from "react-router-dom";
 import { useAuth } from "../context/AuthContext";
 import { getAvailableShifts, claimShift, requestDrop } from "../api/marketplace";
+import { getStudentRequests } from "../api/manager";
 
 const BASE_URL = import.meta.env.VITE_API_URL ?? "http://localhost:8000";
 
@@ -207,6 +208,10 @@ export default function StudentDashboard() {
   const [droppingId, setDroppingId] = useState(null);
   const [dropFeedback, setDropFeedback] = useState(null);
 
+  const [myRequests, setMyRequests] = useState([]);
+  const [myReqLoading, setMyReqLoading] = useState(false);
+  const [myReqError, setMyReqError] = useState(null);
+
   function handleLogout() {
     logout();
     sessionStorage.removeItem("coverd_auth");
@@ -278,8 +283,23 @@ export default function StudentDashboard() {
     loadDashboard();
   }, []);
 
+  const loadMyRequests = async () => {
+    setMyReqLoading(true);
+    setMyReqError(null);
+    try {
+      const authToken = token();
+      const res = await getStudentRequests(authToken);
+      setMyRequests(res.requests ?? []);
+    } catch {
+      setMyReqError("Could not load your requests.");
+    } finally {
+      setMyReqLoading(false);
+    }
+  };
+
   useEffect(() => {
     if (tab === "marketplace") loadMarketplace();
+    if (tab === "requests") loadMyRequests();
   }, [tab]);
 
   if (loading) {
@@ -406,6 +426,7 @@ export default function StudentDashboard() {
   const navTabs = [
     { key: "dashboard", label: "Dashboard" },
     { key: "marketplace", label: "Marketplace" },
+    { key: "requests", label: "My Requests" },
   ];
 
   return (
@@ -693,6 +714,91 @@ export default function StudentDashboard() {
                 View Summary →
               </button>
             </div>
+          </>
+        )}
+
+        {tab === "requests" && (
+          <>
+            <h1 style={{ fontSize: "22px", fontWeight: "700", margin: "0 0 6px" }}>
+              My Requests
+            </h1>
+            <p style={{ fontSize: "14px", color: "#6b7280", margin: "0 0 20px" }}>
+              Track the status of your drop requests.
+            </p>
+
+            {myReqLoading && (
+              <div style={{ ...card, color: "#6b7280", fontSize: "14px" }}>
+                Loading your requests…
+              </div>
+            )}
+
+            {myReqError && (
+              <div style={{
+                padding: "12px 16px", borderRadius: "8px",
+                background: "#fff0f0", color: "#c0392b", border: "1px solid #f5c6cb",
+                fontSize: "13px", marginBottom: "16px",
+                display: "flex", justifyContent: "space-between", alignItems: "center",
+              }}>
+                {myReqError}
+                <button onClick={loadMyRequests} style={{
+                  background: "none", border: "none", color: "#2563eb",
+                  cursor: "pointer", fontSize: "13px", fontFamily: "inherit",
+                }}>
+                  Retry
+                </button>
+              </div>
+            )}
+
+            {!myReqLoading && !myReqError && myRequests.length === 0 && (
+              <div style={{ ...card, color: "#6b7280", fontSize: "14px", textAlign: "center", padding: "40px" }}>
+                You have no requests yet.
+              </div>
+            )}
+
+            {!myReqLoading && myRequests.length > 0 && (
+              <div style={{ display: "flex", flexDirection: "column", gap: "12px" }}>
+                {myRequests.map((req) => (
+                  <div key={req.id} style={{
+                    ...card,
+                    display: "flex",
+                    alignItems: "center",
+                    justifyContent: "space-between",
+                    gap: "16px",
+                  }}>
+                    <div style={{ flex: 1 }}>
+                      <div style={{ display: "flex", alignItems: "center", gap: "8px", marginBottom: "6px", flexWrap: "wrap" }}>
+                        <span style={{
+                          background: "#ede9fe", color: "#6d28d9", borderRadius: "9999px",
+                          padding: "3px 10px", fontSize: "12px", fontWeight: "600",
+                          textTransform: "capitalize",
+                        }}>
+                          {req.request_type}
+                        </span>
+                        <StatusBadge status={req.status} />
+                      </div>
+                      {req.shift ? (
+                        <div style={{ fontSize: "14px", fontWeight: "500", marginBottom: "4px" }}>
+                          {req.shift.location}
+                        </div>
+                      ) : null}
+                      {req.shift ? (
+                        <div style={{ fontSize: "13px", color: "#6b7280" }}>
+                          {fmtDate(req.shift.shift_date)} &nbsp;·&nbsp;
+                          {fmtTime(req.shift.start_time)} – {fmtTime(req.shift.end_time)} &nbsp;·&nbsp;
+                          {req.shift.hours}h
+                        </div>
+                      ) : null}
+                      {req.created_at && (
+                        <div style={{ fontSize: "12px", color: "#9ca3af", marginTop: "4px" }}>
+                          Submitted {new Date(req.created_at).toLocaleDateString("en-US", { month: "short", day: "numeric" })}
+                          {req.reviewed_at && ` · Reviewed ${new Date(req.reviewed_at).toLocaleDateString("en-US", { month: "short", day: "numeric" })}`}
+                        </div>
+                      )}
+                    </div>
+                  </div>
+                ))}
+              </div>
+            )}
           </>
         )}
 

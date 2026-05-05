@@ -20,7 +20,7 @@ export default function LoginPage() {
     try {
       const data = await loginRequest(email, password);
       login(data);
-      navigate("/dashboard");
+      navigate(data.role === "manager" ? "/manager" : "/dashboard");
     } catch {
       setError("Login failed. Check your email and password.");
     } finally {

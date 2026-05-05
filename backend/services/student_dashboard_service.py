@@ -6,6 +6,9 @@ from schemas.dashboard import (
     DashboardNextShift,
     DashboardShiftItem,
     StudentDashboardResponse,
+    StudentRequestItem,
+    StudentRequestShiftInfo,
+    StudentRequestsResponse,
 )
 
 
@@ -97,3 +100,33 @@ def get_student_dashboard(current_user: User, repo: StudentDashboardRepository) 
         marketplace_available_count=marketplace_available_count,
         weekly_shifts=weekly_shifts,
     )
+
+
+def get_student_requests(
+    current_user: User, repo: StudentDashboardRepository
+) -> StudentRequestsResponse:
+    docs = repo.get_student_requests(current_user.id)
+    items: list[StudentRequestItem] = []
+    for doc in docs:
+        shift_doc = doc.get("shift")
+        shift = None
+        if shift_doc is not None:
+            shift = StudentRequestShiftInfo(
+                id=str(shift_doc["_id"]),
+                location=shift_doc["location"],
+                shift_date=shift_doc["shift_date"],
+                start_time=shift_doc["start_time"],
+                end_time=shift_doc["end_time"],
+                hours=float(shift_doc["hours"]),
+            )
+        items.append(
+            StudentRequestItem(
+                id=str(doc["_id"]),
+                request_type=doc["request_type"],
+                status=doc["status"],
+                created_at=doc.get("created_at"),
+                shift=shift,
+                reviewed_at=doc.get("reviewed_at"),
+            )
+        )
+    return StudentRequestsResponse(requests=items, total=len(items))
