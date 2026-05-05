@@ -53,3 +53,18 @@ class StudentDashboardRepository:
                 "shift_date": {"$gte": week_start, "$lte": week_end},
             }
         )
+
+    def get_student_requests(self, student_id: str) -> list[dict]:
+        """Return all requests for a student, newest first, with shift info joined."""
+        requests = list(
+            self._shift_requests.find({"requested_by": student_id}).sort("created_at", -1)
+        )
+        for req in requests:
+            shift_id = req.get("shift_id")
+            req["shift"] = None
+            if shift_id:
+                try:
+                    req["shift"] = self._shifts.find_one({"_id": ObjectId(shift_id)})
+                except Exception:
+                    pass
+        return requests

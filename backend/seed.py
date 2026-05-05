@@ -75,7 +75,7 @@ def seed():
         {
             "student_id": student_id,
             "location": "Franklin Dining",
-            "shift_date": "2026-04-13",
+            "shift_date": "2026-05-06",
             "start_time": "09:00",
             "end_time": "12:00",
             "hours": 3.0,
@@ -84,7 +84,7 @@ def seed():
         {
             "student_id": student_id,
             "location": "Berkshire",
-            "shift_date": "2026-04-15",
+            "shift_date": "2026-05-08",
             "start_time": "17:00",
             "end_time": "21:00",
             "hours": 4.0,
@@ -93,7 +93,7 @@ def seed():
         {
             "student_id": student_id,
             "location": "Hampshire",
-            "shift_date": "2026-04-17",
+            "shift_date": "2026-05-14",
             "start_time": "11:00",
             "end_time": "14:30",
             "hours": 3.5,
@@ -102,7 +102,7 @@ def seed():
         {
             "student_id": None,
             "location": "Worcester",
-            "shift_date": "2026-04-16",
+            "shift_date": "2026-05-07",
             "start_time": "10:00",
             "end_time": "13:00",
             "hours": 3.0,
@@ -111,7 +111,7 @@ def seed():
         {
             "student_id": None,
             "location": "Franklin Dining",
-            "shift_date": "2026-04-18",
+            "shift_date": "2026-05-09",
             "start_time": "14:00",
             "end_time": "18:00",
             "hours": 4.0,
@@ -127,10 +127,19 @@ def seed():
             "request_type": "drop",
             "requested_by": student_id,
             "status": "pending",
-            "created_at": "2026-04-12T10:00:00Z",
+            "created_at": "2026-05-05T10:00:00Z",
             "reviewed_by": None,
             "reviewed_at": None,
-        }
+        },
+        {
+            "shift_id": str(inserted_shifts[0]),
+            "request_type": "drop",
+            "requested_by": student_id,
+            "status": "denied",
+            "created_at": "2026-05-04T08:30:00Z",
+            "reviewed_by": None,
+            "reviewed_at": "2026-05-04T11:00:00Z",
+        },
     ]
 
     shift_requests.insert_many(demo_requests)

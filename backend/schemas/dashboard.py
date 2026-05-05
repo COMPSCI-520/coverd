@@ -1,6 +1,29 @@
 from pydantic import BaseModel
 
 
+class StudentRequestShiftInfo(BaseModel):
+    id: str
+    location: str
+    shift_date: str
+    start_time: str
+    end_time: str
+    hours: float
+
+
+class StudentRequestItem(BaseModel):
+    id: str
+    request_type: str
+    status: str
+    created_at: str | None
+    shift: StudentRequestShiftInfo | None
+    reviewed_at: str | None
+
+
+class StudentRequestsResponse(BaseModel):
+    requests: list[StudentRequestItem]
+    total: int
+
+
 class DashboardNextShift(BaseModel):
     shift_date: str
     start_time: str

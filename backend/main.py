@@ -3,6 +3,7 @@ from fastapi.middleware.cors import CORSMiddleware
 
 from logger import get_logger
 from routers.auth import router as auth_router
+from routers.manager import router as manager_router
 from routers.marketplace import router as marketplace_router
 from routers.student_dashboard import router as student_dashboard_router
 from routers.system import router as system_router
@@ -44,3 +45,4 @@ app.include_router(system_router)
 app.include_router(auth_router)
 app.include_router(student_dashboard_router)
 app.include_router(marketplace_router)
+app.include_router(manager_router)
