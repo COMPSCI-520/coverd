@@ -23,7 +23,10 @@ def _format_day_name(date_str: str) -> str:
     return parsed.strftime("%a %b %d")
 
 
-def get_student_dashboard(current_user: User, repo: StudentDashboardRepository) -> StudentDashboardResponse:
+def get_student_dashboard(
+    current_user: User,
+    repo: StudentDashboardRepository,
+) -> StudentDashboardResponse:
     today = date.today()
     today_str = today.isoformat()
 
@@ -38,7 +41,6 @@ def get_student_dashboard(current_user: User, repo: StudentDashboardRepository) 
     )
 
     upcoming_shift_docs = repo.get_upcoming_student_shifts(current_user.id, today_str)
-
     pending_requests_count = repo.count_pending_requests(current_user.id)
 
     marketplace_available_count = repo.count_marketplace_available_this_week(
@@ -64,6 +66,7 @@ def get_student_dashboard(current_user: User, repo: StudentDashboardRepository) 
 
     weekly_shifts = [
         DashboardShiftItem(
+            id=str(shift["_id"]),
             shift_date=shift["shift_date"],
             day=_format_day_name(shift["shift_date"]),
             location=shift["location"],
@@ -79,6 +82,7 @@ def get_student_dashboard(current_user: User, repo: StudentDashboardRepository) 
     if upcoming_shift_docs:
         first_shift = upcoming_shift_docs[0]
         next_shift = DashboardNextShift(
+            id=str(first_shift["_id"]),
             shift_date=first_shift["shift_date"],
             start_time=first_shift["start_time"],
             end_time=first_shift["end_time"],
@@ -103,13 +107,16 @@ def get_student_dashboard(current_user: User, repo: StudentDashboardRepository) 
 
 
 def get_student_requests(
-    current_user: User, repo: StudentDashboardRepository
+    current_user: User,
+    repo: StudentDashboardRepository,
 ) -> StudentRequestsResponse:
     docs = repo.get_student_requests(current_user.id)
     items: list[StudentRequestItem] = []
+
     for doc in docs:
         shift_doc = doc.get("shift")
         shift = None
+
         if shift_doc is not None:
             shift = StudentRequestShiftInfo(
                 id=str(shift_doc["_id"]),
@@ -119,6 +126,7 @@ def get_student_requests(
                 end_time=shift_doc["end_time"],
                 hours=float(shift_doc["hours"]),
             )
+
         items.append(
             StudentRequestItem(
                 id=str(doc["_id"]),
@@ -129,4 +137,5 @@ def get_student_requests(
                 reviewed_at=doc.get("reviewed_at"),
             )
         )
+
     return StudentRequestsResponse(requests=items, total=len(items))
