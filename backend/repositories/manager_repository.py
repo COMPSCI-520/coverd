@@ -84,8 +84,36 @@ class ManagerRepository:
             return False
 
         now = datetime.now(timezone.utc).isoformat()
+
         self._requests.update_one(
             {"_id": ObjectId(request_id)},
-            {"$set": {"status": "denied", "reviewed_by": manager_id, "reviewed_at": now}},
+            {
+                "$set": {
+                    "status": "denied",
+                    "reviewed_by": manager_id,
+                    "reviewed_at": now,
+                }
+            },
         )
+
+        shift_id = req.get("shift_id")
+        student_id = req.get("requested_by")
+
+        if shift_id and student_id:
+            try:
+                self._shifts.update_one(
+                    {"_id": ObjectId(shift_id)},
+                    {
+                        "$set": {
+                            "status": "assigned",
+                            "student_id": student_id,
+                        },
+                        "$unset": {
+                            "posted_by": "",
+                        },
+                    },
+                )
+            except Exception:
+                pass
+
         return True

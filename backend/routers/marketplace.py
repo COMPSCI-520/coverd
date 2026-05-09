@@ -17,7 +17,7 @@ def get_marketplace_shifts(
     db: Database = Depends(get_db),
 ):
     repo = MarketplaceRepository(db)
-    return list_available_shifts(repo)
+    return list_available_shifts(current_user, repo)
 
 
 @router.post("/shifts/{shift_id}/claim", response_model=ClaimResponse)

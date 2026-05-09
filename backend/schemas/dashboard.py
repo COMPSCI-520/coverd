@@ -25,6 +25,7 @@ class StudentRequestsResponse(BaseModel):
 
 
 class DashboardNextShift(BaseModel):
+    id: str
     shift_date: str
     start_time: str
     end_time: str
@@ -33,6 +34,7 @@ class DashboardNextShift(BaseModel):
 
 
 class DashboardShiftItem(BaseModel):
+    id: str
     shift_date: str
     day: str
     location: str
