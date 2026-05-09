@@ -22,6 +22,10 @@ function getMonday(date = new Date()) {
   return copy.toISOString().slice(0, 10);
 }
 
+function getToday() {
+  return new Date().toISOString().slice(0, 10);
+}
+
 function formatDate(dateString) {
   if (!dateString) return "—";
 
@@ -60,10 +64,12 @@ function ShiftStatus({ shift }) {
   return <span className="status-pill status-available">Confirmed</span>;
 }
 
-function StaffCard({ employee }) {
+function StaffCard({ employee, viewMode }) {
   const hoursLabel = employee.is_international
-    ? `${employee.hours_this_week} / ${employee.weekly_limit} hrs this week`
-    : `${employee.hours_this_week} hrs this week`;
+    ? `${employee.hours_this_week} / ${employee.weekly_limit} hrs ${
+        viewMode === "today" ? "today" : "this week"
+      }`
+    : `${employee.hours_this_week} hrs ${viewMode === "today" ? "today" : "this week"}`;
 
   const progressPct =
     employee.is_international && employee.weekly_limit
@@ -89,6 +95,7 @@ function StaffCard({ employee }) {
       <div className="staff-card-summary">
         <div>
           <strong>{hoursLabel}</strong>
+
           {employee.is_international && (
             <>
               <div className="progress-track staff-progress">
@@ -100,13 +107,20 @@ function StaffCard({ employee }) {
         </div>
 
         <div>
-          <strong>{employee.shift_count} assigned shift{employee.shift_count !== 1 ? "s" : ""}</strong>
-          <small>{employee.pending_drop_count} pending drop{employee.pending_drop_count !== 1 ? "s" : ""}</small>
+          <strong>
+            {employee.shift_count} assigned shift{employee.shift_count !== 1 ? "s" : ""}
+          </strong>
+          <small>
+            {employee.pending_drop_count} pending drop
+            {employee.pending_drop_count !== 1 ? "s" : ""}
+          </small>
         </div>
       </div>
 
       {employee.shifts.length === 0 ? (
-        <div className="staff-empty-shifts">No shifts scheduled for this week.</div>
+        <div className="staff-empty-shifts">
+          No shifts scheduled {viewMode === "today" ? "today." : "for this week."}
+        </div>
       ) : (
         <table className="staff-shift-table">
           <thead>
@@ -140,20 +154,27 @@ function StaffCard({ employee }) {
   );
 }
 
-function CoverageNeededCard({ shifts }) {
+function CoverageNeededCard({ shifts, viewMode }) {
   return (
     <section className="coverage-card">
       <div className="coverage-card-header">
         <div>
           <h2>Shifts Needing Coverage</h2>
-          <p>Shifts dropped with no claim yet</p>
+          <p>
+            {viewMode === "today"
+              ? "Approved dropped shifts still unclaimed for selected date"
+              : "Approved dropped shifts still unclaimed for selected week"}
+          </p>
         </div>
 
         <span>{shifts.length}</span>
       </div>
 
       {shifts.length === 0 ? (
-        <div className="coverage-empty">No approved drops are waiting for coverage.</div>
+        <div className="coverage-empty">
+          No approved drops are waiting for coverage
+          {viewMode === "today" ? " today." : " this week."}
+        </div>
       ) : (
         <div className="coverage-list">
           {shifts.map((shift) => (
@@ -179,12 +200,16 @@ export default function StaffSchedule() {
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState("");
 
+  const [draftViewMode, setDraftViewMode] = useState("week");
   const [draftWeekStart, setDraftWeekStart] = useState(getMonday());
+  const [draftScheduleDate, setDraftScheduleDate] = useState(getToday());
   const [draftLocation, setDraftLocation] = useState("All locations");
   const [draftStudent, setDraftStudent] = useState("");
 
   const [filters, setFilters] = useState({
+    viewMode: "week",
     weekStart: getMonday(),
+    scheduleDate: getToday(),
     location: "All locations",
     student: "",
   });
@@ -217,12 +242,18 @@ export default function StaffSchedule() {
       employee.shifts.forEach((shift) => unique.add(shift.location));
     });
 
+    data.shifts_needing_coverage?.forEach((shift) => {
+      unique.add(shift.location);
+    });
+
     return ["All locations", ...Array.from(unique).sort()];
   }, [data]);
 
   function applyFilters() {
     setFilters({
+      viewMode: draftViewMode,
       weekStart: draftWeekStart,
+      scheduleDate: draftScheduleDate,
       location: draftLocation,
       student: draftStudent.trim(),
     });
@@ -232,6 +263,8 @@ export default function StaffSchedule() {
     logout();
     navigate("/");
   }
+
+  const activeViewMode = filters.viewMode || "week";
 
   return (
     <div className="manager-page">
@@ -257,17 +290,34 @@ export default function StaffSchedule() {
         <section className="staff-page-heading">
           <div>
             <h1>Staff Schedule</h1>
-            <p>View employee schedules and weekly hour totals.</p>
+            <p>View employee schedules, daily coverage, and weekly hour totals.</p>
           </div>
         </section>
 
         <section className="staff-filter-bar">
           <label>
-            <span>Week Starting</span>
+            <span>View</span>
+            <select
+              value={draftViewMode}
+              onChange={(event) => setDraftViewMode(event.target.value)}
+            >
+              <option value="week">Weekly View</option>
+              <option value="today">Daily View</option>
+            </select>
+          </label>
+
+          <label>
+            <span>{draftViewMode === "today" ? "Date" : "Week Starting"}</span>
             <input
               type="date"
-              value={draftWeekStart}
-              onChange={(event) => setDraftWeekStart(event.target.value)}
+              value={draftViewMode === "today" ? draftScheduleDate : draftWeekStart}
+              onChange={(event) => {
+                if (draftViewMode === "today") {
+                  setDraftScheduleDate(event.target.value);
+                } else {
+                  setDraftWeekStart(event.target.value);
+                }
+              }}
             />
           </label>
 
@@ -306,20 +356,30 @@ export default function StaffSchedule() {
               <div className="summary-card">
                 <span>Total Staff</span>
                 <strong>{data.total_staff}</strong>
-                <small>Students in schedule view</small>
+                <small>
+                  {activeViewMode === "today"
+                    ? "Students working selected day"
+                    : "Students in schedule view"}
+                </small>
               </div>
 
               <div className="summary-card">
                 <span>Scheduled Shifts</span>
                 <strong>{data.scheduled_shifts}</strong>
-                <small>Assigned or pending shifts</small>
+                <small>
+                  {activeViewMode === "today"
+                    ? "Assigned or pending shifts for selected date"
+                    : "Assigned or pending shifts"}
+                </small>
               </div>
 
               <div className="summary-card">
                 <span>Scheduled Hours</span>
                 <strong>{data.scheduled_hours}</strong>
                 <small>
-                  Week of {formatDate(data.week_start)} – {formatDate(data.week_end)}
+                  {activeViewMode === "today"
+                    ? formatDate(data.week_start)
+                    : `Week of ${formatDate(data.week_start)} – ${formatDate(data.week_end)}`}
                 </small>
               </div>
 
@@ -330,16 +390,25 @@ export default function StaffSchedule() {
               </div>
             </section>
 
-            <CoverageNeededCard shifts={data.shifts_needing_coverage ?? []} />
+            <CoverageNeededCard
+              shifts={data.shifts_needing_coverage ?? []}
+              viewMode={activeViewMode}
+            />
 
             <section className="staff-list">
               {loading ? (
                 <div className="empty-state">Loading staff schedule…</div>
               ) : data.staff.length === 0 ? (
-                <div className="empty-state">No staff match the selected filters.</div>
+                <div className="empty-state">
+                  No staff match the selected {activeViewMode === "today" ? "day" : "week"}.
+                </div>
               ) : (
                 data.staff.map((employee) => (
-                  <StaffCard key={employee.student_id} employee={employee} />
+                  <StaffCard
+                    key={employee.student_id}
+                    employee={employee}
+                    viewMode={activeViewMode}
+                  />
                 ))
               )}
             </section>

@@ -57,10 +57,16 @@ export async function getStudentRequests(token) {
 export async function getStaffSchedule(token, filters = {}) {
   const url = new URL(`${API_URL}/manager/staff-schedule`);
 
+  if (filters.viewMode) url.searchParams.set("view", filters.viewMode);
   if (filters.weekStart) url.searchParams.set("week_start", filters.weekStart);
+  if (filters.scheduleDate) {
+    url.searchParams.set("schedule_date", filters.scheduleDate);
+  }
+
   if (filters.location && filters.location !== "All locations") {
     url.searchParams.set("location", filters.location);
   }
+
   if (filters.student) url.searchParams.set("student", filters.student);
 
   const res = await fetch(url.toString(), {

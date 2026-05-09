@@ -668,7 +668,7 @@ button:hover:not(:disabled) {
 
 .staff-filter-bar {
   display: grid;
-  grid-template-columns: 1fr 1.2fr 1.3fr auto;
+  grid-template-columns: 0.8fr 1fr 1.2fr 1.3fr auto;
   gap: 18px;
   background: #ffffff;
   border: 1px solid #d9e0ea;
