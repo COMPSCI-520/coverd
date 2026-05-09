@@ -88,7 +88,6 @@ function StaffCard({ employee, viewMode }) {
           <span className="staff-type-pill">
             {employee.is_international ? "International Student" : "Domestic Student"}
           </span>
-          <span className="staff-good-pill">Status: Good</span>
         </div>
       </div>
 

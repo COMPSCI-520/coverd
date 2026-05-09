@@ -744,8 +744,7 @@ button:hover:not(:disabled) {
   gap: 10px;
 }
 
-.staff-type-pill,
-.staff-good-pill {
+.staff-type-pill {
   border-radius: 999px;
   padding: 6px 12px;
   font-size: 13px;
@@ -755,11 +754,6 @@ button:hover:not(:disabled) {
 .staff-type-pill {
   background: #eef4ff;
   color: #2563eb;
-}
-
-.staff-good-pill {
-  background: #dcfce7;
-  color: #15803d;
 }
 
 .staff-card-summary {
