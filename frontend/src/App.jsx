@@ -4,6 +4,7 @@ import LoginPage from "./pages/LoginPage";
 import StudentDashboard from "./pages/StudentDashboard";
 import ShiftMarketplace from "./pages/ShiftMarketplace";
 import ManagerDashboard from "./pages/ManagerDashboard";
+import StaffSchedule from "./pages/StaffSchedule";
 
 function ProtectedRoute({ children, requiredRole }) {
   const { user } = useAuth();
@@ -47,6 +48,15 @@ export default function App() {
             element={
               <ProtectedRoute requiredRole="manager">
                 <ManagerDashboard />
+              </ProtectedRoute>
+            }
+          />
+
+          <Route
+            path="/manager/staff-schedule"
+            element={
+              <ProtectedRoute requiredRole="manager">
+                <StaffSchedule />
               </ProtectedRoute>
             }
           />
