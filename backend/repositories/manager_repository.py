@@ -159,3 +159,50 @@ class ManagerRepository:
                 }
             )
         )
+    
+    def get_shifts_needing_coverage(
+        self,
+        week_start: str,
+        week_end: str,
+        location: str | None = None,
+    ) -> list[dict]:
+        """
+        Return shifts whose drop request was approved and that are now available
+        in the marketplace but have not been claimed yet.
+        """
+        shift_query: dict = {
+            "student_id": None,
+            "status": "available",
+            "shift_date": {"$gte": week_start, "$lte": week_end},
+        }
+
+        if location and location != "All locations":
+            shift_query["location"] = location
+
+        available_shifts = list(
+            self._shifts.find(shift_query).sort([("shift_date", 1), ("start_time", 1)])
+        )
+
+        if not available_shifts:
+            return []
+
+        shift_ids = [str(shift["_id"]) for shift in available_shifts]
+
+        approved_requests = list(
+            self._requests.find(
+                {
+                    "shift_id": {"$in": shift_ids},
+                    "request_type": "drop",
+                    "status": "approved",
+                }
+            )
+        )
+
+        approved_shift_ids = {request["shift_id"] for request in approved_requests}
+
+        return [
+            shift
+            for shift in available_shifts
+            if str(shift["_id"]) in approved_shift_ids
+        ]
+    

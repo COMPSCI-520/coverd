@@ -43,6 +43,13 @@ class StaffScheduleShift(BaseModel):
     status: str
     has_pending_drop: bool = False
 
+class StaffCoverageShift(BaseModel):
+    id: str
+    location: str
+    shift_date: str
+    start_time: str
+    end_time: str
+    hours: float
 
 class StaffScheduleEmployee(BaseModel):
     student_id: str
@@ -64,4 +71,6 @@ class StaffScheduleResponse(BaseModel):
     scheduled_shifts: int
     scheduled_hours: float
     pending_drops: int
+    coverage_needed_count: int
+    shifts_needing_coverage: list[StaffCoverageShift]
     staff: list[StaffScheduleEmployee]

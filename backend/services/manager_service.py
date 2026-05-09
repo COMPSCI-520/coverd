@@ -9,6 +9,7 @@ from schemas.manager import (
     RequestShiftInfo,
     RequestsListResponse,
     ReviewResponse,
+    StaffCoverageShift,
     StaffScheduleEmployee,
     StaffScheduleResponse,
     StaffScheduleShift,
@@ -184,6 +185,24 @@ def get_staff_schedule(
             )
         )
 
+    coverage_docs = repo.get_shifts_needing_coverage(
+        start,
+        end,
+        location=location,
+    )
+
+    shifts_needing_coverage = [
+        StaffCoverageShift(
+            id=str(shift["_id"]),
+            location=shift["location"],
+            shift_date=shift["shift_date"],
+            start_time=shift["start_time"],
+            end_time=shift["end_time"],
+            hours=float(shift["hours"]),
+        )
+        for shift in coverage_docs
+    ]
+
     scheduled_shifts = sum(item.shift_count for item in staff_items)
     scheduled_hours = round(sum(item.hours_this_week for item in staff_items), 2)
     pending_drops = sum(item.pending_drop_count for item in staff_items)
@@ -195,5 +214,7 @@ def get_staff_schedule(
         scheduled_shifts=scheduled_shifts,
         scheduled_hours=scheduled_hours,
         pending_drops=pending_drops,
+        coverage_needed_count=len(shifts_needing_coverage),
+        shifts_needing_coverage=shifts_needing_coverage,
         staff=staff_items,
     )
