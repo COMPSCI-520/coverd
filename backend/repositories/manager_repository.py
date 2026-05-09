@@ -117,3 +117,45 @@ class ManagerRepository:
                 pass
 
         return True
+    
+    def get_student_users(self, student_search: str | None = None) -> list[dict]:
+        query: dict = {"role": "student"}
+
+        if student_search:
+            query["$or"] = [
+                {"full_name": {"$regex": student_search, "$options": "i"}},
+                {"email": {"$regex": student_search, "$options": "i"}},
+            ]
+
+        return list(self._users.find(query).sort("full_name", 1))
+
+    def get_staff_shifts(
+        self,
+        week_start: str,
+        week_end: str,
+        location: str | None = None,
+    ) -> list[dict]:
+        query: dict = {
+            "student_id": {"$ne": None},
+            "status": {"$in": ["assigned", "pending"]},
+            "shift_date": {"$gte": week_start, "$lte": week_end},
+        }
+
+        if location and location != "All locations":
+            query["location"] = location
+
+        return list(self._shifts.find(query).sort([("shift_date", 1), ("start_time", 1)]))
+
+    def get_pending_drop_requests_for_shifts(self, shift_ids: list[str]) -> list[dict]:
+        if not shift_ids:
+            return []
+
+        return list(
+            self._requests.find(
+                {
+                    "shift_id": {"$in": shift_ids},
+                    "request_type": "drop",
+                    "status": "pending",
+                }
+            )
+        )
