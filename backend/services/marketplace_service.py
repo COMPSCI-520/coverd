@@ -1,3 +1,5 @@
+from datetime import datetime
+
 from fastapi import HTTPException, status
 
 from models.user import User
@@ -167,6 +169,13 @@ def request_drop(
         raise HTTPException(
             status_code=status.HTTP_409_CONFLICT,
             detail="Only assigned shifts can be dropped",
+        )
+    
+    shift_end = datetime.fromisoformat(f"{shift['shift_date']}T{shift['end_time']}:00")
+    if shift_end < datetime.now():
+        raise HTTPException(
+            status_code=status.HTTP_409_CONFLICT,
+            detail="Completed shifts cannot be dropped",
         )
 
     if repo.has_pending_drop_request(shift_id):

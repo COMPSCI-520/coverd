@@ -9,18 +9,26 @@ class MarketplaceRepository:
         self._shifts = db["shifts"]
         self._requests = db["shift_requests"]
         self._users = db["users"]
-
+    
     def get_marketplace_shifts(self) -> list[dict]:
         """
-        Return shifts that should appear in the marketplace table.
+        Return future/today shifts that should appear in the marketplace table.
 
         available = claimable
         pending = visible but not claimable, because a drop request is awaiting manager review
+
+        Past shifts are excluded because students should not be able to claim shifts
+        that have already happened.
         """
+        today = date.today().isoformat()
+
         docs = list(
-            self._shifts.find({"status": {"$in": ["available", "pending"]}}).sort(
-                [("shift_date", 1), ("start_time", 1)]
-            )
+            self._shifts.find(
+                {
+                    "status": {"$in": ["available", "pending"]},
+                    "shift_date": {"$gte": today},
+                }
+            ).sort([("shift_date", 1), ("start_time", 1)])
         )
 
         for shift in docs:
@@ -36,7 +44,7 @@ class MarketplaceRepository:
                     shift["posted_by_name"] = "Student"
 
         return docs
-
+    
     def get_shift_by_id(self, shift_id: str) -> dict | None:
         try:
             return self._shifts.find_one({"_id": ObjectId(shift_id)})
