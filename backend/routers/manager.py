@@ -35,6 +35,8 @@ def get_all_requests(
 @router.get("/staff-schedule", response_model=StaffScheduleResponse)
 def read_staff_schedule(
     week_start: Optional[str] = Query(default=None),
+    schedule_date: Optional[str] = Query(default=None),
+    view: Optional[str] = Query(default="week"),
     location: Optional[str] = Query(default=None),
     student: Optional[str] = Query(default=None),
     current_user: User = Depends(require_manager),
@@ -44,6 +46,8 @@ def read_staff_schedule(
     return get_staff_schedule(
         repo,
         week_start=week_start,
+        schedule_date=schedule_date,
+        view=view,
         location=location,
         student=student,
     )

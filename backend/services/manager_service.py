@@ -19,7 +19,19 @@ from schemas.manager import (
 INTERNATIONAL_WEEKLY_LIMIT = 20
 
 
-def _get_week_bounds(week_start: str | None) -> tuple[str, str]:
+def _get_schedule_bounds(
+    week_start: str | None,
+    schedule_date: str | None,
+    view: str | None,
+) -> tuple[str, str]:
+    if view == "today":
+        selected_date = (
+            datetime.strptime(schedule_date, "%Y-%m-%d").date()
+            if schedule_date
+            else date.today()
+        )
+        return selected_date.isoformat(), selected_date.isoformat()
+
     if week_start:
         start = datetime.strptime(week_start, "%Y-%m-%d").date()
     else:
@@ -110,10 +122,12 @@ def review_request(
 def get_staff_schedule(
     repo: ManagerRepository,
     week_start: str | None = None,
+    schedule_date: str | None = None,
+    view: str | None = "week",
     location: str | None = None,
     student: str | None = None,
 ) -> StaffScheduleResponse:
-    start, end = _get_week_bounds(week_start)
+    start, end = _get_schedule_bounds(week_start, schedule_date, view)
 
     students = repo.get_student_users(student_search=student)
     shifts = repo.get_staff_shifts(start, end, location=location)
@@ -133,6 +147,10 @@ def get_staff_schedule(
     for student_doc in students:
         student_id = str(student_doc["_id"])
         student_shifts = shifts_by_student.get(student_id, [])
+
+        # In Today view, only show employees who actually work that day.
+        if view == "today" and not student_shifts:
+            continue
 
         # If a location filter is active, do not show students with no matching shifts.
         if location and location != "All locations" and not student_shifts:
