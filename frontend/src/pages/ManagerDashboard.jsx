@@ -254,12 +254,29 @@ export default function ManagerDashboard() {
         </div>
 
         <div style={{ display: "flex", alignItems: "center", gap: "8px" }}>
-          <div style={{
-            background: "#fef9c3", color: "#92400e", borderRadius: "9999px",
-            padding: "2px 10px", fontSize: "12px", fontWeight: "600",
-          }}>
-            Manager
-          </div>
+          <button
+            onClick={() => navigate("/manager/staff-schedule")}
+            style={{
+              background: "#eef4ff",
+              color: "#2563eb",
+              border: "1px solid #bfdbfe",
+              borderRadius: "9999px",
+              padding: "5px 12px",
+              fontSize: "12px",
+              fontWeight: "700",
+              cursor: "pointer",
+              fontFamily: "inherit",
+            }}
+          >
+            Staff Schedule
+          </button>
+
+            <div style={{
+              background: "#fef9c3", color: "#92400e", borderRadius: "9999px",
+              padding: "2px 10px", fontSize: "12px", fontWeight: "600",
+            }}>
+              Manager
+            </div>
           <button onClick={handleLogout} style={{
             background: "none", border: "1px solid #e5e7eb", borderRadius: "6px",
             padding: "4px 12px", fontSize: "12px", color: "#6b7280",

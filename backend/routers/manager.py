@@ -1,14 +1,14 @@
 from typing import Optional
 
-from fastapi import APIRouter, Depends, HTTPException, status
+from fastapi import APIRouter, Depends, HTTPException, Query, status
 from pymongo.database import Database
 
 from dependencies.auth import get_current_user
 from dependencies.database import get_db
 from models.user import User
 from repositories.manager_repository import ManagerRepository
-from schemas.manager import RequestsListResponse, ReviewResponse
-from services.manager_service import list_requests, review_request
+from schemas.manager import RequestsListResponse, ReviewResponse, StaffScheduleResponse
+from services.manager_service import get_staff_schedule, list_requests, review_request
 
 router = APIRouter(prefix="/manager", tags=["Manager"])
 
@@ -30,6 +30,27 @@ def get_all_requests(
 ):
     repo = ManagerRepository(db)
     return list_requests(repo, status_filter=status)
+
+
+@router.get("/staff-schedule", response_model=StaffScheduleResponse)
+def read_staff_schedule(
+    week_start: Optional[str] = Query(default=None),
+    schedule_date: Optional[str] = Query(default=None),
+    view: Optional[str] = Query(default="week"),
+    location: Optional[str] = Query(default=None),
+    student: Optional[str] = Query(default=None),
+    current_user: User = Depends(require_manager),
+    db: Database = Depends(get_db),
+):
+    repo = ManagerRepository(db)
+    return get_staff_schedule(
+        repo,
+        week_start=week_start,
+        schedule_date=schedule_date,
+        view=view,
+        location=location,
+        student=student,
+    )
 
 
 @router.post("/requests/{request_id}/approve", response_model=ReviewResponse)
