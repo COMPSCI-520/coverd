@@ -1,960 +1,346 @@
-import { useState, useEffect } from "react";
+import { useEffect, useState } from "react";
 import { useNavigate } from "react-router-dom";
+import { requestDrop } from "../api/marketplace";
 import { useAuth } from "../context/AuthContext";
-import { getAvailableShifts, claimShift, requestDrop } from "../api/marketplace";
-import { getStudentRequests } from "../api/manager";
 
 const BASE_URL = import.meta.env.VITE_API_URL ?? "http://localhost:8000";
+const SESSION_KEY = "coverd_auth";
 
-const token = () => {
+function getToken() {
   try {
-    const raw = sessionStorage.getItem("coverd_auth");
-    if (!raw) return null;
-    const parsed = JSON.parse(raw);
-    return parsed?.access_token ?? null;
+    const raw = sessionStorage.getItem(SESSION_KEY);
+    return raw ? JSON.parse(raw)?.access_token : null;
   } catch {
     return null;
   }
-};
-
-const API = {
-  getDashboard: async () => {
-    const authToken = token();
-
-    const res = await fetch(`${BASE_URL}/students/me/dashboard`, {
-      headers: {
-        Authorization: `Bearer ${authToken}`,
-      },
-    });
-
-    if (res.status === 401) {
-      sessionStorage.removeItem("coverd_auth");
-      window.location.href = "/";
-      return null;
-    }
-
-    if (!res.ok) {
-      throw new Error("Failed to load dashboard");
-    }
-
-    return res.json();
-  },
-};
-
-function StatusBadge({ status }) {
-  const styles = {
-    assigned: { label: "Assigned", bg: "#dcfce7", color: "#15803d" },
-    confirmed: { label: "Confirmed", bg: "#dcfce7", color: "#15803d" },
-    pending_drop: { label: "Pending drop", bg: "#fef9c3", color: "#92400e" },
-    pending: { label: "Pending", bg: "#fef9c3", color: "#92400e" },
-    approved: { label: "Approved", bg: "#dcfce7", color: "#15803d" },
-    denied: { label: "Denied", bg: "#fee2e2", color: "#b91c1c" },
-    available: { label: "Available", bg: "#dbeafe", color: "#1d4ed8" },
-  };
-
-  const s = styles[status?.toLowerCase()] || styles.pending;
-
-  return (
-    <span
-      style={{
-        background: s.bg,
-        color: s.color,
-        borderRadius: "9999px",
-        padding: "3px 10px",
-        fontSize: "12px",
-        fontWeight: "600",
-      }}
-    >
-      {s.label}
-    </span>
-  );
 }
 
-function fmtTime(t) {
-  if (!t) return "";
-  const [h, m] = t.split(":").map(Number);
-  const ampm = h >= 12 ? "PM" : "AM";
-  return `${h % 12 || 12}:${String(m).padStart(2, "0")} ${ampm}`;
+async function getDashboard() {
+  const response = await fetch(`${BASE_URL}/students/me/dashboard`, {
+    headers: {
+      Authorization: `Bearer ${getToken()}`,
+    },
+  });
+
+  if (!response.ok) {
+    throw new Error("Failed to load dashboard");
+  }
+
+  return response.json();
 }
 
-function fmtDate(d) {
-  if (!d) return "";
-  const date = new Date(`${d}T00:00:00`);
-  return date.toLocaleDateString("en-US", {
+function formatDate(dateString) {
+  if (!dateString) return "—";
+
+  return new Date(`${dateString}T00:00:00`).toLocaleDateString("en-US", {
     weekday: "short",
     month: "short",
     day: "numeric",
   });
 }
 
-function ShiftTable({ shifts, onDrop, droppingId }) {
-  if (!shifts || shifts.length === 0) {
-    return (
-      <p style={{ color: "#6b7280", fontSize: "14px", padding: "20px" }}>
-        No shifts to display.
-      </p>
-    );
-  }
+function formatTime(timeString) {
+  if (!timeString) return "—";
 
-  const cols = onDrop
-    ? ["Day", "Location", "Time", "Hours", "Status", ""]
-    : ["Day", "Location", "Time", "Hours", "Status"];
+  const [hour, minute] = timeString.split(":").map(Number);
+  const suffix = hour >= 12 ? "PM" : "AM";
 
-  return (
-    <table style={{ width: "100%", borderCollapse: "collapse" }}>
-      <thead>
-        <tr style={{ background: "#f9fafb" }}>
-          {cols.map((h) => (
-            <th
-              key={h}
-              style={{
-                padding: "10px 20px",
-                textAlign: "left",
-                fontSize: "11px",
-                fontWeight: "600",
-                color: "#6b7280",
-                letterSpacing: "0.05em",
-                textTransform: "uppercase",
-                borderBottom: "1px solid #e5e7eb",
-              }}
-            >
-              {h}
-            </th>
-          ))}
-        </tr>
-      </thead>
-      <tbody>
-        {shifts.map((shift, i) => (
-          <tr
-            key={`${shift.shift_date}-${shift.start_time}-${i}`}
-            style={{
-              borderBottom:
-                i < shifts.length - 1 ? "1px solid #f3f4f6" : "none",
-            }}
-          >
-            <td style={{ padding: "14px 20px", fontSize: "14px", fontWeight: "500", color: "#111" }}>
-              {fmtDate(shift.shift_date)}
-            </td>
-            <td style={{ padding: "14px 20px", fontSize: "14px", color: "#374151" }}>
-              {shift.location}
-            </td>
-            <td style={{ padding: "14px 20px", fontSize: "14px", color: "#374151" }}>
-              {fmtTime(shift.start_time)} – {fmtTime(shift.end_time)}
-            </td>
-            <td style={{ padding: "14px 20px", fontSize: "14px", color: "#374151" }}>
-              {shift.hours}h
-            </td>
-            <td style={{ padding: "14px 20px" }}>
-              <StatusBadge status={shift.status} />
-            </td>
-            {onDrop && (
-              <td style={{ padding: "14px 20px" }}>
-                {shift.status === "assigned" && (
-                  <button
-                    onClick={() => onDrop(shift.id)}
-                    disabled={droppingId === shift.id}
-                    style={{
-                      background: "none",
-                      border: "1px solid #e5e7eb",
-                      borderRadius: "6px",
-                      padding: "4px 12px",
-                      fontSize: "12px",
-                      color: droppingId === shift.id ? "#9ca3af" : "#ef4444",
-                      cursor: droppingId === shift.id ? "not-allowed" : "pointer",
-                      fontFamily: "inherit",
-                    }}
-                  >
-                    {droppingId === shift.id ? "Requesting…" : "Request Drop"}
-                  </button>
-                )}
-              </td>
-            )}
-          </tr>
-        ))}
-      </tbody>
-    </table>
-  );
+  return `${hour % 12 || 12}:${String(minute).padStart(2, "0")} ${suffix}`;
 }
 
-function Skeleton({ w = "100%", h = "20px", mb = "8px" }) {
-  return (
-    <div
-      style={{
-        width: w,
-        height: h,
-        background: "#e5e7eb",
-        borderRadius: "6px",
-        marginBottom: mb,
-        animation: "pulse 1.5s ease-in-out infinite",
-      }}
-    />
-  );
+function isPastShift(shiftDate, endTime) {
+  if (!shiftDate || !endTime) return false;
+
+  const shiftEnd = new Date(`${shiftDate}T${endTime}:00`);
+  const now = new Date();
+
+  return shiftEnd < now;
+}
+
+function getInitials(name) {
+  if (!name) return "AS";
+
+  return name
+    .split(" ")
+    .map((part) => part[0])
+    .join("")
+    .slice(0, 2)
+    .toUpperCase();
+}
+
+function StatusBadge({ status }) {
+  const normalized = status?.toLowerCase();
+
+  if (normalized === "assigned") {
+    return <span className="status-pill status-available">Confirmed</span>;
+  }
+
+  if (normalized === "pending") {
+    return <span className="status-pill status-pending">Pending drop</span>;
+  }
+
+  return <span className="status-pill status-pending">{status}</span>;
 }
 
 export default function StudentDashboard() {
-  const { logout } = useAuth();
+  const { user, logout } = useAuth();
   const navigate = useNavigate();
 
-  const [tab, setTab] = useState("dashboard");
   const [data, setData] = useState(null);
   const [loading, setLoading] = useState(true);
+  const [droppingId, setDroppingId] = useState(null);
+  const [feedback, setFeedback] = useState(null);
   const [error, setError] = useState(null);
 
-  const [mktShifts, setMktShifts] = useState([]);
-  const [mktLoading, setMktLoading] = useState(false);
-  const [mktError, setMktError] = useState(null);
-  const [claimingId, setClaimingId] = useState(null);
-  const [claimFeedback, setClaimFeedback] = useState(null);
-  const [droppingId, setDroppingId] = useState(null);
-  const [dropFeedback, setDropFeedback] = useState(null);
+  async function loadDashboard() {
+    setLoading(true);
+    setError(null);
 
-  const [myRequests, setMyRequests] = useState([]);
-  const [myReqLoading, setMyReqLoading] = useState(false);
-  const [myReqError, setMyReqError] = useState(null);
-
-  function handleLogout() {
-    logout();
-    sessionStorage.removeItem("coverd_auth");
-    navigate("/");
-  }
-
-  const loadDashboard = async () => {
     try {
-      setLoading(true);
-      setError(null);
-      const res = await API.getDashboard();
-      if (res) {
-        setData(res);
-      }
+      const response = await getDashboard();
+      setData(response);
     } catch {
-      setError("Could not load dashboard. Please check your connection or log in again.");
+      setError("Could not load dashboard. Please log in again or retry.");
     } finally {
       setLoading(false);
     }
-  };
-
-  const loadMarketplace = async () => {
-    setMktLoading(true);
-    setMktError(null);
-    setClaimFeedback(null);
-    try {
-      const authToken = token();
-      const res = await getAvailableShifts(authToken);
-      setMktShifts(res.shifts ?? []);
-    } catch {
-      setMktError("Could not load marketplace shifts.");
-    } finally {
-      setMktLoading(false);
-    }
-  };
-
-  const handleClaim = async (shiftId) => {
-    setClaimingId(shiftId);
-    setClaimFeedback(null);
-    try {
-      const authToken = token();
-      await claimShift(authToken, shiftId);
-      setClaimFeedback({ type: "success", message: "Shift claimed! It now appears in your schedule." });
-      setMktShifts((prev) => prev.filter((s) => s.id !== shiftId));
-      loadDashboard();
-    } catch (err) {
-      setClaimFeedback({ type: "error", message: err.message });
-    } finally {
-      setClaimingId(null);
-    }
-  };
-
-  const handleDrop = async (shiftId) => {
-    setDroppingId(shiftId);
-    setDropFeedback(null);
-    try {
-      const authToken = token();
-      await requestDrop(authToken, shiftId);
-      setDropFeedback({ type: "success", message: "Drop request submitted. Awaiting manager approval." });
-      loadDashboard();
-    } catch (err) {
-      setDropFeedback({ type: "error", message: err.message });
-    } finally {
-      setDroppingId(null);
-    }
-  };
+  }
 
   useEffect(() => {
     loadDashboard();
   }, []);
 
-  const loadMyRequests = async () => {
-    setMyReqLoading(true);
-    setMyReqError(null);
-    try {
-      const authToken = token();
-      const res = await getStudentRequests(authToken);
-      setMyRequests(res.requests ?? []);
-    } catch {
-      setMyReqError("Could not load your requests.");
-    } finally {
-      setMyReqLoading(false);
-    }
-  };
+  async function handleDrop(shiftId) {
+    setDroppingId(shiftId);
+    setFeedback(null);
 
-  useEffect(() => {
-    if (tab === "marketplace") loadMarketplace();
-    if (tab === "requests") loadMyRequests();
-  }, [tab]);
+    try {
+      await requestDrop(getToken(), shiftId);
+
+      setFeedback({
+        type: "success",
+        message: "Drop request submitted. Awaiting manager approval.",
+      });
+
+      await loadDashboard();
+    } catch (err) {
+      setFeedback({
+        type: "error",
+        message: err.message || "Could not submit drop request.",
+      });
+    } finally {
+      setDroppingId(null);
+    }
+  }
+
+  function handleLogout() {
+    logout();
+    navigate("/");
+  }
 
   if (loading) {
     return (
-      <div
-        style={{
-          minHeight: "100vh",
-          background: "#f9fafb",
-          fontFamily: "'Inter','Segoe UI',sans-serif",
-        }}
-      >
-        <style>{pulse}</style>
-        <nav style={navStyle}>
-          <span style={{ fontSize: "20px", fontWeight: "700", color: "#2563eb" }}>
-            coverd
-          </span>
-        </nav>
-        <div style={{ maxWidth: "1000px", margin: "0 auto", padding: "32px 24px" }}>
-          <Skeleton w="160px" h="28px" mb="24px" />
-          <div
-            style={{
-              display: "grid",
-              gridTemplateColumns: "1fr 1fr 1fr",
-              gap: "16px",
-              marginBottom: "20px",
-            }}
-          >
-            {[1, 2, 3].map((i) => (
-              <div
-                key={i}
-                style={{
-                  background: "#fff",
-                  border: "1px solid #e5e7eb",
-                  borderRadius: "10px",
-                  padding: "20px",
-                }}
-              >
-                <Skeleton h="14px" mb="12px" />
-                <Skeleton w="60px" h="28px" />
-              </div>
-            ))}
-          </div>
-          <div
-            style={{
-              background: "#fff",
-              border: "1px solid #e5e7eb",
-              borderRadius: "10px",
-              padding: "20px",
-            }}
-          >
-            <Skeleton h="14px" mb="12px" />
-            <Skeleton h="14px" mb="12px" />
-            <Skeleton h="14px" mb="0" />
-          </div>
-        </div>
+      <div className="wireframe-page">
+        <main className="prototype-card dashboard-sized-card">
+          <nav className="app-navbar">
+            <div className="brand">coverd</div>
+          </nav>
+
+          <section className="page-content compact-content">
+            <div className="empty-state">Loading dashboard…</div>
+          </section>
+        </main>
       </div>
     );
   }
 
-  if (error) {
+  if (error || !data) {
     return (
-      <div
-        style={{
-          minHeight: "100vh",
-          background: "#f9fafb",
-          display: "flex",
-          alignItems: "center",
-          justifyContent: "center",
-          fontFamily: "'Inter','Segoe UI',sans-serif",
-        }}
-      >
-        <div style={{ textAlign: "center" }}>
-          <p style={{ color: "#b91c1c", fontSize: "14px", marginBottom: "16px" }}>
-            {error}
-          </p>
-          <button
-            onClick={loadDashboard}
-            style={{
-              background: "#2563eb",
-              color: "#fff",
-              border: "none",
-              borderRadius: "8px",
-              padding: "9px 20px",
-              fontSize: "13px",
-              fontWeight: "600",
-              cursor: "pointer",
-            }}
-          >
-            Try again
-          </button>
-        </div>
+      <div className="wireframe-page">
+        <main className="prototype-card dashboard-sized-card">
+          <section className="page-content compact-content">
+            <div className="message error">{error}</div>
+
+            <button className="primary-button" onClick={loadDashboard}>
+              Retry
+            </button>
+          </section>
+        </main>
       </div>
     );
   }
-
-  const {
-    full_name,
-    hours_this_week,
-    weekly_limit,
-    remaining_hours,
-    show_warning,
-    warning_message,
-    upcoming_shifts_count,
-    next_shift,
-    pending_requests_count,
-    marketplace_available_count,
-    weekly_shifts,
-  } = data;
 
   const hoursPct =
-    weekly_limit && weekly_limit > 0
-      ? Math.min(hours_this_week / weekly_limit, 1)
+    data.weekly_limit && data.weekly_limit > 0
+      ? Math.min((data.hours_this_week / data.weekly_limit) * 100, 100)
       : 0;
 
-  const initials = full_name
-    ? full_name
-        .split(" ")
-        .map((n) => n[0])
-        .join("")
-        .slice(0, 2)
-        .toUpperCase()
-    : "?";
-
-  const navTabs = [
-    { key: "dashboard", label: "Dashboard" },
-    { key: "marketplace", label: "Marketplace" },
-    { key: "requests", label: "My Requests" },
-  ];
+  const displayName = user?.full_name || data.full_name || "Alex Student";
 
   return (
-    <div
-      style={{
-        minHeight: "100vh",
-        background: "#f9fafb",
-        fontFamily: "'Inter','Segoe UI',sans-serif",
-        color: "#111827",
-      }}
-    >
-      <style>{`
-        @import url('https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700&display=swap');
-        * { box-sizing: border-box; }
-        button { transition: opacity 0.15s; }
-        button:hover { opacity: 0.85; }
-        ${pulse}
-      `}</style>
+    <div className="wireframe-page">
+      <main className="prototype-card dashboard-sized-card">
+        <nav className="app-navbar">
+          <div className="brand">coverd</div>
 
-      <nav style={navStyle}>
-        <span
-          style={{
-            fontSize: "20px",
-            fontWeight: "700",
-            color: "#2563eb",
-            marginRight: "32px",
-            letterSpacing: "-0.5px",
-          }}
-        >
-          coverd
-        </span>
-
-        <div style={{ display: "flex", flex: 1 }}>
-          {navTabs.map((t) => (
-            <button
-              key={t.key}
-              onClick={() => setTab(t.key)}
-              style={{
-                background: "none",
-                border: "none",
-                borderBottom:
-                  tab === t.key ? "2px solid #2563eb" : "2px solid transparent",
-                cursor: "pointer",
-                fontFamily: "inherit",
-                fontSize: "14px",
-                fontWeight: tab === t.key ? "600" : "400",
-                color: tab === t.key ? "#2563eb" : "#6b7280",
-                padding: "0 20px",
-                height: "56px",
-                marginBottom: "-1px",
-              }}
-            >
-              {t.label}
-            </button>
-          ))}
-        </div>
-
-        <div style={{ display: "flex", alignItems: "center", gap: "8px" }}>
-          <div
-            style={{
-              width: "32px",
-              height: "32px",
-              borderRadius: "50%",
-              background: "#dbeafe",
-              display: "flex",
-              alignItems: "center",
-              justifyContent: "center",
-              fontSize: "12px",
-              fontWeight: "700",
-              color: "#1d4ed8",
-            }}
-          >
-            {initials}
+          <div className="app-tabs">
+            <button className="selected">Dashboard</button>
+            <button onClick={() => navigate("/marketplace")}>Marketplace</button>
           </div>
-          <span style={{ fontSize: "14px", color: "#374151" }}>{full_name}</span>
-          <button
-            onClick={handleLogout}
-            style={{
-              marginLeft: "8px",
-              background: "none",
-              border: "1px solid #e5e7eb",
-              borderRadius: "6px",
-              padding: "4px 12px",
-              fontSize: "12px",
-              color: "#6b7280",
-              cursor: "pointer",
-              fontFamily: "inherit",
-            }}
-          >
-            Log out
-          </button>
-        </div>
-      </nav>
 
-      <div style={{ maxWidth: "1000px", margin: "0 auto", padding: "32px 24px" }}>
-        {tab === "dashboard" && (
-          <>
-            <h1 style={{ fontSize: "22px", fontWeight: "700", margin: "0 0 24px" }}>
-              Dashboard
-            </h1>
+          <div className="nav-user">
+            <span className="avatar">{getInitials(displayName)}</span>
+            <span>{displayName}</span>
+            <button onClick={handleLogout}>Log out</button>
+          </div>
+        </nav>
 
-            <div
-              style={{
-                display: "grid",
-                gridTemplateColumns: "1fr 1fr 1fr",
-                gap: "16px",
-                marginBottom: "20px",
-              }}
-            >
-              <div style={card}>
-                <div style={cardLabel}>Hours this week</div>
-                <div
-                  style={{
-                    display: "flex",
-                    alignItems: "baseline",
-                    gap: "6px",
-                    marginBottom: "12px",
-                  }}
-                >
-                  <span style={{ fontSize: "28px", fontWeight: "700" }}>
-                    {hours_this_week}
-                  </span>
-                  {weekly_limit ? (
-                    <span style={{ fontSize: "14px", color: "#9ca3af" }}>
-                      / {weekly_limit} hrs
-                    </span>
-                  ) : null}
-                </div>
+        <section className="page-content compact-content">
+          <div className="dashboard-title">Dashboard</div>
 
-                {weekly_limit ? (
-                  <>
+          {feedback && (
+            <div className={`message ${feedback.type}`}>
+              {feedback.message}
+            </div>
+          )}
+
+          <div className="summary-grid dashboard-summary-grid">
+            <div className="summary-card">
+              <span>Hours this week</span>
+              <strong>
+                {data.hours_this_week}
+                {data.weekly_limit ? ` / ${data.weekly_limit}` : ""} hrs
+              </strong>
+
+              {data.weekly_limit && (
+                <>
+                  <div className="progress-track">
                     <div
-                      style={{
-                        background: "#e5e7eb",
-                        borderRadius: "999px",
-                        height: "6px",
-                        marginBottom: "8px",
-                      }}
-                    >
-                      <div
-                        style={{
-                          background: hoursPct >= 0.9 ? "#ef4444" : "#2563eb",
-                          borderRadius: "999px",
-                          height: "100%",
-                          width: `${hoursPct * 100}%`,
-                        }}
-                      />
-                    </div>
-                    <div style={{ fontSize: "12px", color: "#6b7280" }}>
-                      {remaining_hours} hrs remaining
-                    </div>
-                  </>
-                ) : (
-                  <div style={{ fontSize: "12px", color: "#6b7280" }}>
-                    No weekly hour limit applies
+                      className="progress-fill"
+                      style={{ width: `${hoursPct}%` }}
+                    />
                   </div>
-                )}
-              </div>
 
-              <div style={card}>
-                <div style={cardLabel}>Upcoming shifts</div>
-                <div style={{ fontSize: "28px", fontWeight: "700", marginBottom: "6px" }}>
-                  {upcoming_shifts_count}
-                </div>
-                {next_shift && (
-                  <div style={{ fontSize: "12px", color: "#6b7280" }}>
-                    Next: {fmtDate(next_shift.shift_date)}, {fmtTime(next_shift.start_time)}
-                  </div>
-                )}
-              </div>
-
-              <div style={card}>
-                <div style={cardLabel}>Pending requests</div>
-                <div style={{ fontSize: "28px", fontWeight: "700", marginBottom: "6px" }}>
-                  {pending_requests_count}
-                </div>
-                {pending_requests_count > 0 && (
-                  <div style={{ fontSize: "12px", color: "#6b7280" }}>
-                    Awaiting manager review
-                  </div>
-                )}
-              </div>
-            </div>
-
-            {show_warning && (
-              <div
-                style={{
-                  background: "#fffbeb",
-                  border: "1px solid #fcd34d",
-                  borderRadius: "8px",
-                  padding: "12px 16px",
-                  marginBottom: "20px",
-                  display: "flex",
-                  gap: "10px",
-                  alignItems: "flex-start",
-                }}
-              >
-                <span style={{ fontSize: "15px", flexShrink: 0 }}>⚠️</span>
-                <p
-                  style={{
-                    margin: 0,
-                    fontSize: "13px",
-                    color: "#92400e",
-                    lineHeight: "1.5",
-                  }}
-                >
-                  <strong>International student limit:</strong> {warning_message}
-                </p>
-              </div>
-            )}
-
-            <div
-              style={{
-                background: "#fff",
-                border: "1px solid #e5e7eb",
-                borderRadius: "10px",
-                marginBottom: "20px",
-              }}
-            >
-              <div
-                style={{
-                  padding: "16px 20px",
-                  borderBottom: "1px solid #e5e7eb",
-                }}
-              >
-                <span
-                  style={{
-                    fontSize: "11px",
-                    fontWeight: "600",
-                    color: "#6b7280",
-                    letterSpacing: "0.06em",
-                    textTransform: "uppercase",
-                  }}
-                >
-                  This week&apos;s shifts
-                </span>
-              </div>
-              {dropFeedback && (
-                <div style={{
-                  margin: "12px 20px 0",
-                  padding: "10px 14px",
-                  borderRadius: "8px",
-                  fontSize: "13px",
-                  background: dropFeedback.type === "success" ? "#f0fdf4" : "#fff0f0",
-                  color: dropFeedback.type === "success" ? "#15803d" : "#c0392b",
-                  border: `1px solid ${dropFeedback.type === "success" ? "#bbf7d0" : "#f5c6cb"}`,
-                }}>
-                  {dropFeedback.message}
-                </div>
+                  <small>{data.remaining_hours} hrs remaining</small>
+                </>
               )}
-              <ShiftTable shifts={weekly_shifts} onDrop={handleDrop} droppingId={droppingId} />
             </div>
 
-            <div
-              style={{
-                ...card,
-                flexDirection: "row",
-                justifyContent: "space-between",
-                alignItems: "center",
-                display: "flex",
-              }}
+            <div className="summary-card">
+              <span>Upcoming shifts</span>
+              <strong>{data.upcoming_shifts_count}</strong>
+
+              <small>
+                {data.next_shift
+                  ? `Next: ${formatDate(data.next_shift.shift_date)}, ${formatTime(
+                      data.next_shift.start_time
+                    )}`
+                  : "No upcoming shifts"}
+              </small>
+            </div>
+
+            <div className="summary-card">
+              <span>Pending requests</span>
+              <strong>{data.pending_requests_count}</strong>
+              <small>Drop request — awaiting manager</small>
+            </div>
+          </div>
+
+          {data.show_warning && (
+            <div className="warning-box dashboard-warning">
+              <strong>International student limit:</strong> {data.warning_message}
+            </div>
+          )}
+
+          <div className="table-card dashboard-table-card">
+            <div className="section-title-row">
+              <div className="section-title">This Week&apos;s Shifts</div>
+            </div>
+
+            {data.weekly_shifts.length === 0 ? (
+              <div className="empty-state">No shifts scheduled this week.</div>
+            ) : (
+              <table className="marketplace-table compact-table">
+                <thead>
+                  <tr>
+                    <th>Day</th>
+                    <th>Location</th>
+                    <th>Time</th>
+                    <th>Hours</th>
+                    <th>Status</th>
+                    <th></th>
+                  </tr>
+                </thead>
+
+                <tbody>
+                  {data.weekly_shifts.map((shift) => {
+                    const completed = isPastShift(
+                      shift.shift_date,
+                      shift.end_time
+                    );
+
+                    const disabled =
+                      droppingId === shift.id ||
+                      shift.status !== "assigned" ||
+                      completed;
+
+                    return (
+                      <tr key={shift.id}>
+                        <td>{formatDate(shift.shift_date)}</td>
+                        <td>{shift.location}</td>
+                        <td>
+                          {formatTime(shift.start_time)} –{" "}
+                          {formatTime(shift.end_time)}
+                        </td>
+                        <td>{shift.hours}h</td>
+                        <td>
+                          <StatusBadge status={shift.status} />
+                        </td>
+
+                        <td className="table-action">
+                          <button
+                            className="secondary-button"
+                            disabled={disabled}
+                            title={
+                              completed
+                                ? "This shift is already completed and cannot be dropped."
+                                : ""
+                            }
+                            onClick={() => handleDrop(shift.id)}
+                          >
+                            {completed
+                              ? "Completed"
+                              : droppingId === shift.id
+                                ? "Requesting…"
+                                : "Drop"}
+                          </button>
+                        </td>
+                      </tr>
+                    );
+                  })}
+                </tbody>
+              </table>
+            )}
+          </div>
+
+          <div className="marketplace-cta-card">
+            <div>
+              <strong>Shift Marketplace</strong>
+              <p>
+                {data.marketplace_available_count} shifts available to pick up
+                this week
+              </p>
+            </div>
+
+            <button
+              className="primary-button small-primary"
+              onClick={() => navigate("/marketplace")}
             >
-              <div>
-                <div style={{ fontSize: "15px", fontWeight: "600", marginBottom: "4px" }}>
-                  Shift Marketplace
-                </div>
-                <div style={{ fontSize: "13px", color: "#6b7280" }}>
-                  {marketplace_available_count} shifts available to pick up this week
-                </div>
-              </div>
-              <button
-                onClick={() => setTab("marketplace")}
-                style={{
-                  background: "#2563eb",
-                  color: "#fff",
-                  border: "none",
-                  borderRadius: "8px",
-                  padding: "9px 18px",
-                  fontSize: "13px",
-                  fontWeight: "600",
-                  cursor: "pointer",
-                  fontFamily: "inherit",
-                }}
-              >
-                View Summary →
-              </button>
-            </div>
-          </>
-        )}
-
-        {tab === "requests" && (
-          <>
-            <h1 style={{ fontSize: "22px", fontWeight: "700", margin: "0 0 6px" }}>
-              My Requests
-            </h1>
-            <p style={{ fontSize: "14px", color: "#6b7280", margin: "0 0 20px" }}>
-              Track the status of your drop requests.
-            </p>
-
-            {myReqLoading && (
-              <div style={{ ...card, color: "#6b7280", fontSize: "14px" }}>
-                Loading your requests…
-              </div>
-            )}
-
-            {myReqError && (
-              <div style={{
-                padding: "12px 16px", borderRadius: "8px",
-                background: "#fff0f0", color: "#c0392b", border: "1px solid #f5c6cb",
-                fontSize: "13px", marginBottom: "16px",
-                display: "flex", justifyContent: "space-between", alignItems: "center",
-              }}>
-                {myReqError}
-                <button onClick={loadMyRequests} style={{
-                  background: "none", border: "none", color: "#2563eb",
-                  cursor: "pointer", fontSize: "13px", fontFamily: "inherit",
-                }}>
-                  Retry
-                </button>
-              </div>
-            )}
-
-            {!myReqLoading && !myReqError && myRequests.length === 0 && (
-              <div style={{ ...card, color: "#6b7280", fontSize: "14px", textAlign: "center", padding: "40px" }}>
-                You have no requests yet.
-              </div>
-            )}
-
-            {!myReqLoading && myRequests.length > 0 && (
-              <div style={{ display: "flex", flexDirection: "column", gap: "12px" }}>
-                {myRequests.map((req) => (
-                  <div key={req.id} style={{
-                    ...card,
-                    display: "flex",
-                    alignItems: "center",
-                    justifyContent: "space-between",
-                    gap: "16px",
-                  }}>
-                    <div style={{ flex: 1 }}>
-                      <div style={{ display: "flex", alignItems: "center", gap: "8px", marginBottom: "6px", flexWrap: "wrap" }}>
-                        <span style={{
-                          background: "#ede9fe", color: "#6d28d9", borderRadius: "9999px",
-                          padding: "3px 10px", fontSize: "12px", fontWeight: "600",
-                          textTransform: "capitalize",
-                        }}>
-                          {req.request_type}
-                        </span>
-                        <StatusBadge status={req.status} />
-                      </div>
-                      {req.shift ? (
-                        <div style={{ fontSize: "14px", fontWeight: "500", marginBottom: "4px" }}>
-                          {req.shift.location}
-                        </div>
-                      ) : null}
-                      {req.shift ? (
-                        <div style={{ fontSize: "13px", color: "#6b7280" }}>
-                          {fmtDate(req.shift.shift_date)} &nbsp;·&nbsp;
-                          {fmtTime(req.shift.start_time)} – {fmtTime(req.shift.end_time)} &nbsp;·&nbsp;
-                          {req.shift.hours}h
-                        </div>
-                      ) : null}
-                      {req.created_at && (
-                        <div style={{ fontSize: "12px", color: "#9ca3af", marginTop: "4px" }}>
-                          Submitted {new Date(req.created_at).toLocaleDateString("en-US", { month: "short", day: "numeric" })}
-                          {req.reviewed_at && ` · Reviewed ${new Date(req.reviewed_at).toLocaleDateString("en-US", { month: "short", day: "numeric" })}`}
-                        </div>
-                      )}
-                    </div>
-                  </div>
-                ))}
-              </div>
-            )}
-          </>
-        )}
-
-        {tab === "marketplace" && (
-          <>
-            <h1 style={{ fontSize: "22px", fontWeight: "700", margin: "0 0 6px" }}>
-              Shift Marketplace
-            </h1>
-            <p style={{ fontSize: "14px", color: "#6b7280", margin: "0 0 20px" }}>
-              Pick up available shifts dropped by your peers.
-            </p>
-
-            {show_warning && (
-              <div style={{
-                background: "#fffbeb",
-                border: "1px solid #fcd34d",
-                borderRadius: "8px",
-                padding: "12px 16px",
-                marginBottom: "20px",
-                display: "flex",
-                gap: "10px",
-              }}>
-                <span>⚠️</span>
-                <p style={{ margin: 0, fontSize: "13px", color: "#92400e" }}>
-                  <strong>International student limit:</strong> {warning_message}
-                </p>
-              </div>
-            )}
-
-            {claimFeedback && (
-              <div style={{
-                padding: "10px 14px",
-                borderRadius: "8px",
-                fontSize: "13px",
-                marginBottom: "16px",
-                background: claimFeedback.type === "success" ? "#f0fdf4" : "#fff0f0",
-                color: claimFeedback.type === "success" ? "#15803d" : "#c0392b",
-                border: `1px solid ${claimFeedback.type === "success" ? "#bbf7d0" : "#f5c6cb"}`,
-              }}>
-                {claimFeedback.message}
-              </div>
-            )}
-
-            {mktLoading && (
-              <div style={{ ...card, color: "#6b7280", fontSize: "14px" }}>
-                Loading available shifts…
-              </div>
-            )}
-
-            {mktError && (
-              <div style={{
-                padding: "12px 16px",
-                borderRadius: "8px",
-                background: "#fff0f0",
-                color: "#c0392b",
-                border: "1px solid #f5c6cb",
-                fontSize: "13px",
-                marginBottom: "16px",
-              }}>
-                {mktError}
-                <button onClick={loadMarketplace} style={{
-                  marginLeft: "12px",
-                  background: "none",
-                  border: "none",
-                  color: "#2563eb",
-                  cursor: "pointer",
-                  fontSize: "13px",
-                  fontFamily: "inherit",
-                }}>
-                  Retry
-                </button>
-              </div>
-            )}
-
-            {!mktLoading && !mktError && mktShifts.length === 0 && (
-              <div style={{ ...card, color: "#6b7280", fontSize: "14px", textAlign: "center", padding: "40px" }}>
-                No shifts available in the marketplace right now.
-              </div>
-            )}
-
-            {!mktLoading && mktShifts.length > 0 && (
-              <div style={{ display: "flex", flexDirection: "column", gap: "12px" }}>
-                {mktShifts.map((shift) => (
-                  <div key={shift.id} style={{
-                    ...card,
-                    display: "flex",
-                    alignItems: "center",
-                    justifyContent: "space-between",
-                    gap: "16px",
-                  }}>
-                    <div style={{ flex: 1 }}>
-                      <div style={{ fontSize: "15px", fontWeight: "600", marginBottom: "4px" }}>
-                        {shift.location}
-                      </div>
-                      <div style={{ fontSize: "13px", color: "#6b7280" }}>
-                        {fmtDate(shift.shift_date)} &nbsp;·&nbsp;
-                        {fmtTime(shift.start_time)} – {fmtTime(shift.end_time)} &nbsp;·&nbsp;
-                        {shift.hours}h
-                      </div>
-                    </div>
-                    <button
-                      onClick={() => handleClaim(shift.id)}
-                      disabled={claimingId === shift.id}
-                      style={{
-                        background: claimingId === shift.id ? "#e5e7eb" : "#2563eb",
-                        color: claimingId === shift.id ? "#9ca3af" : "#fff",
-                        border: "none",
-                        borderRadius: "8px",
-                        padding: "9px 18px",
-                        fontSize: "13px",
-                        fontWeight: "600",
-                        cursor: claimingId === shift.id ? "not-allowed" : "pointer",
-                        fontFamily: "inherit",
-                        whiteSpace: "nowrap",
-                      }}
-                    >
-                      {claimingId === shift.id ? "Claiming…" : "Pick up shift"}
-                    </button>
-                  </div>
-                ))}
-              </div>
-            )}
-          </>
-        )}
-      </div>
+              Browse Shifts →
+            </button>
+          </div>
+        </section>
+      </main>
     </div>
   );
 }
-
-const navStyle = {
-  background: "#fff",
-  borderBottom: "1px solid #e5e7eb",
-  padding: "0 32px",
-  display: "flex",
-  alignItems: "center",
-  height: "56px",
-  gap: "0",
-  position: "sticky",
-  top: 0,
-  zIndex: 50,
-};
-
-const card = {
-  background: "#fff",
-  border: "1px solid #e5e7eb",
-  borderRadius: "10px",
-  padding: "20px 24px",
-};
-
-const cardLabel = {
-  fontSize: "11px",
-  fontWeight: "600",
-  color: "#6b7280",
-  letterSpacing: "0.06em",
-  textTransform: "uppercase",
-  marginBottom: "10px",
-};
-
-const pulse = `@keyframes pulse { 0%,100%{opacity:1} 50%{opacity:0.5} }`;
