@@ -870,3 +870,86 @@ button:hover:not(:disabled) {
     overflow-x: auto;
   }
 }
+/* Staff schedule coverage-needed card */
+.coverage-card {
+  background: #ffffff;
+  border: 1px solid #d9e0ea;
+  border-radius: 14px;
+  padding: 22px 24px;
+  margin-bottom: 24px;
+}
+
+.coverage-card-header {
+  display: flex;
+  align-items: flex-start;
+  justify-content: space-between;
+  gap: 16px;
+  margin-bottom: 16px;
+}
+
+.coverage-card-header h2 {
+  margin: 0 0 5px;
+  font-size: 22px;
+  font-weight: 800;
+  color: #111827;
+}
+
+.coverage-card-header p {
+  margin: 0;
+  color: #6b7280;
+  font-size: 15px;
+}
+
+.coverage-card-header span {
+  min-width: 36px;
+  height: 36px;
+  border-radius: 999px;
+  background: #fef3c7;
+  color: #b45309;
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  font-weight: 800;
+}
+
+.coverage-list {
+  display: grid;
+  gap: 10px;
+}
+
+.coverage-item {
+  background: #f9fafb;
+  border: 1px solid #e5e7eb;
+  border-radius: 10px;
+  padding: 13px 15px;
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 16px;
+}
+
+.coverage-item strong {
+  color: #111827;
+  font-size: 15px;
+}
+
+.coverage-item span {
+  color: #4b5563;
+  font-size: 14px;
+}
+
+.coverage-empty {
+  background: #f9fafb;
+  border: 1px dashed #cfd7e3;
+  border-radius: 10px;
+  padding: 16px;
+  color: #6b7280;
+  font-size: 15px;
+}
+
+@media (max-width: 900px) {
+  .coverage-item {
+    align-items: flex-start;
+    flex-direction: column;
+  }
+}

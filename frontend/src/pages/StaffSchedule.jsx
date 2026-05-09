@@ -140,6 +140,37 @@ function StaffCard({ employee }) {
   );
 }
 
+function CoverageNeededCard({ shifts }) {
+  return (
+    <section className="coverage-card">
+      <div className="coverage-card-header">
+        <div>
+          <h2>Shifts Needing Coverage</h2>
+          <p>Shifts dropped with no claim yet</p>
+        </div>
+
+        <span>{shifts.length}</span>
+      </div>
+
+      {shifts.length === 0 ? (
+        <div className="coverage-empty">No approved drops are waiting for coverage.</div>
+      ) : (
+        <div className="coverage-list">
+          {shifts.map((shift) => (
+            <div className="coverage-item" key={shift.id}>
+              <strong>{shift.location}</strong>
+              <span>
+                {formatDate(shift.shift_date)} · {formatTime(shift.start_time)} –{" "}
+                {formatTime(shift.end_time)} · {shift.hours}h
+              </span>
+            </div>
+          ))}
+        </div>
+      )}
+    </section>
+  );
+}
+
 export default function StaffSchedule() {
   const { logout } = useAuth();
   const navigate = useNavigate();
@@ -298,6 +329,8 @@ export default function StaffSchedule() {
                 <small>Requests awaiting review</small>
               </div>
             </section>
+
+            <CoverageNeededCard shifts={data.shifts_needing_coverage ?? []} />
 
             <section className="staff-list">
               {loading ? (

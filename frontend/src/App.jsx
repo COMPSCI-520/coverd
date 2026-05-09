@@ -4,7 +4,7 @@ import LoginPage from "./pages/LoginPage";
 import StudentDashboard from "./pages/StudentDashboard";
 import ShiftMarketplace from "./pages/ShiftMarketplace";
 import ManagerDashboard from "./pages/ManagerDashboard";
-import StaffSchedule from "./pages/StaffSchedule";
+import StaffSchedule from "./pages/StaffSchedule.jsx";
 
 function ProtectedRoute({ children, requiredRole }) {
   const { user } = useAuth();
