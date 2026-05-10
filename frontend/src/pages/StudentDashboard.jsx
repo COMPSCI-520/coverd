@@ -184,13 +184,16 @@ export default function StudentDashboard() {
           <div className="brand">coverd</div>
 
           <div className="app-tabs">
-            <button className="selected">Dashboard</button>
-            <button onClick={() => navigate("/marketplace")}>Marketplace</button>
+              <button className="selected">Dashboard</button>
+              <button onClick={() => navigate("/marketplace")}>Marketplace</button>
+              <button onClick={() => navigate("/my-schedule")}>My Schedule</button>
           </div>
 
           <div className="nav-user">
-            <span className="avatar">{getInitials(displayName)}</span>
-            <span>{displayName}</span>
+            <div className="avatar-circle">
+                  {user?.full_name?.charAt(0)}
+            </div>
+            <span>{user?.full_name}</span>
             <button onClick={handleLogout}>Log out</button>
           </div>
         </nav>
