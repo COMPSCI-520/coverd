@@ -661,9 +661,9 @@ button:hover:not(:disabled) {
 }
 
 .staff-schedule-shell {
-  max-width: 1360px;
+  width: min(1280px, calc(100% - 64px));
   margin: 0 auto;
-  padding: 40px 32px 64px;
+  padding: 40px 0 64px;
 }
 
 .staff-page-heading {
