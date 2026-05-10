@@ -2,6 +2,7 @@ import { useEffect, useState } from "react";
 import { useNavigate } from "react-router-dom";
 import { requestDrop } from "../api/marketplace";
 import { useAuth } from "../context/AuthContext";
+import UserAvatar from "../components/UserAvatar";
 
 const BASE_URL = import.meta.env.VITE_API_URL ?? "http://localhost:8000";
 const SESSION_KEY = "coverd_auth";
@@ -55,17 +56,6 @@ function isPastShift(shiftDate, endTime) {
   const now = new Date();
 
   return shiftEnd < now;
-}
-
-function getInitials(name) {
-  if (!name) return "AS";
-
-  return name
-    .split(" ")
-    .map((part) => part[0])
-    .join("")
-    .slice(0, 2)
-    .toUpperCase();
 }
 
 function StatusBadge({ status }) {
@@ -190,10 +180,8 @@ export default function StudentDashboard() {
           </div>
 
           <div className="nav-user">
-            <div className="avatar-circle">
-                  {user?.full_name?.charAt(0)}
-            </div>
-            <span>{user?.full_name}</span>
+            <UserAvatar name={displayName} />
+            <span>{displayName}</span>
             <button onClick={handleLogout}>Log out</button>
           </div>
         </nav>

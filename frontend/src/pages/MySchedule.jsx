@@ -2,6 +2,8 @@ import { useEffect, useMemo, useState } from "react";
 import { useNavigate } from "react-router-dom";
 import { getMySchedule } from "../api/mySchedule";
 import { useAuth } from "../context/AuthContext";
+import UserAvatar from "../components/UserAvatar";
+
 
 function groupShiftsByWeek(shifts) {
   const grouped = {};
@@ -111,16 +113,14 @@ export default function MySchedule() {
           </div>
 
           <div className="nav-user">
-              <div className="avatar-circle">
-                {(user?.full_name || "Student")[0].toUpperCase()}
-              </div>
+            <UserAvatar name={user?.full_name || "Student"} />
 
-              <span>{user?.full_name || "Student"}</span>
+            <span>{user?.full_name || "Student"}</span>
 
-                <button onClick={handleLogout}>
-                    Log out
-                </button>
-              </div>
+            <button onClick={handleLogout}>
+              Log out
+            </button>
+          </div>
         </nav>
         
 

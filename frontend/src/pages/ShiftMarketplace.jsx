@@ -2,6 +2,7 @@ import { useEffect, useMemo, useState } from "react";
 import { useNavigate } from "react-router-dom";
 import { claimShift, getAvailableShifts } from "../api/marketplace";
 import { useAuth } from "../context/AuthContext";
+import UserAvatar from "../components/UserAvatar";
 
 const SESSION_KEY = "coverd_auth";
 
@@ -155,6 +156,7 @@ export default function ShiftMarketplace() {
           </div>
 
           <div className="nav-user">
+            <UserAvatar name={user?.full_name || "Student"} />
             <span>{user?.full_name || "Student"}</span>
             <button onClick={handleLogout}>Log out</button>
           </div>

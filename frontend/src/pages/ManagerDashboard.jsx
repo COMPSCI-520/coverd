@@ -71,21 +71,21 @@ function RequestCard({ req, onApprove, onDeny, actionState }) {
     <div style={{
       background: "#fff",
       border: "1px solid #e5e7eb",
-      borderRadius: "10px",
-      padding: "20px 24px",
+      borderRadius: "12px",
+      padding: "22px 28px",
       display: "flex",
-      gap: "20px",
+      gap: "24px",
       alignItems: "flex-start",
     }}>
       <div style={{ flex: 1 }}>
         <div style={{ display: "flex", alignItems: "center", gap: "10px", marginBottom: "8px", flexWrap: "wrap" }}>
-          <span style={{ fontWeight: "600", fontSize: "15px" }}>{req.student_name}</span>
+          <span style={{ fontWeight: "700", fontSize: "16px" }}>{req.student_name}</span>
           <TypeBadge type={req.request_type} />
           <StatusBadge status={req.status} />
         </div>
 
         {shift ? (
-          <div style={{ fontSize: "13px", color: "#374151", marginBottom: "6px" }}>
+          <div style={{ fontSize: "14px", color: "#374151", marginBottom: "6px" }}>
             <span style={{ fontWeight: "500" }}>{shift.location}</span>
             &nbsp;&middot;&nbsp;{fmtDate(shift.shift_date)}
             &nbsp;&middot;&nbsp;{fmtTime(shift.start_time)} – {fmtTime(shift.end_time)}
@@ -287,7 +287,13 @@ export default function ManagerDashboard() {
         </div>
       </nav>
 
-      <div style={{ maxWidth: "860px", margin: "0 auto", padding: "32px 24px" }}>
+      <div
+        style={{
+          width: "min(1500px, calc(100% - 64px))",
+          margin: "0 auto",
+          padding: "40px 0 64px",
+        }}
+      >
         <div style={{ marginBottom: "24px" }}>
           <h1 style={{ fontSize: "22px", fontWeight: "700", margin: "0 0 4px" }}>
             Shift Requests

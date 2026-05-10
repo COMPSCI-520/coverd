@@ -10,7 +10,7 @@ body,
 body {
   margin: 0;
   font-family: Inter, "Segoe UI", Arial, sans-serif;
-  background: #121429;
+  background: #f9fafb;
   color: #111827;
 }
 
@@ -35,29 +35,31 @@ button:hover:not(:disabled) {
 /* Main page shell */
 .wireframe-page {
   min-height: 100vh;
-  background: #121429;
-  padding: 16px;
+  background: #f9fafb;
+  padding: 0;
   display: flex;
-  align-items: flex-start;
-  justify-content: center;
+  align-items: stretch;
+  justify-content: stretch;
 }
 
-/* App container: use almost full screen width */
+/* App container: full-screen student app layout */
 .prototype-card {
-  width: calc(100vw - 32px);
-  max-width: 1700px;
-  min-height: auto;
+  width: 100%;
+  max-width: none;
+  min-height: 100vh;
   background: #ffffff;
-  border: 1px solid #dbe3ef;
-  border-radius: 16px;
+  border: none;
+  border-radius: 0;
   overflow: hidden;
-  box-shadow: 0 24px 60px rgba(0, 0, 0, 0.28);
+  box-shadow: none;
+  display: flex;
+  flex-direction: column;
 }
 
 /* Dashboard should also use screen width */
 .dashboard-sized-card {
-  width: calc(100vw - 32px);
-  max-width: 1500px;
+  width: 100%;
+  max-width: none;
 }
 
 /* Top app navigation */
@@ -122,6 +124,20 @@ button:hover:not(:disabled) {
   font-weight: 800;
 }
 
+.avatar-circle {
+  width: 30px;
+  height: 30px;
+  border-radius: 999px;
+  background: #e5edff;
+  color: #2563eb;
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  font-size: 12px;
+  font-weight: 800;
+  flex-shrink: 0;
+}
+
 .nav-user button {
   border: 1px solid #d1d5db;
   background: #ffffff;
@@ -136,6 +152,7 @@ button:hover:not(:disabled) {
 .page-content {
   padding: 48px 56px 56px;
   background: #f9fafb;
+  flex: 1;
 }
 
 .compact-content {
@@ -418,19 +435,19 @@ button:hover:not(:disabled) {
 }
 
 .dashboard-summary-grid {
-  gap: 22px;
-  margin-bottom: 20px;
+  gap: 18px;
+  margin-bottom: 18px;
 }
 
 .summary-card {
   background: #ffffff;
   border: 1px solid #d9e0ea;
   border-radius: 12px;
-  padding: 24px;
+  padding: 20px;
 }
 
 .dashboard-summary-grid .summary-card {
-  padding: 24px;
+  padding: 18px 20px;
 }
 
 .summary-card span {
@@ -445,7 +462,7 @@ button:hover:not(:disabled) {
 .summary-card strong {
   display: block;
   color: #111827;
-  font-size: 42px;
+  font-size: 36px;
   line-height: 1.1;
   margin-bottom: 10px;
 }
@@ -453,6 +470,20 @@ button:hover:not(:disabled) {
 .summary-card small {
   color: #6b7280;
   font-size: 14px;
+}
+
+.dashboard-summary-grid .summary-card span {
+  font-size: 13px;
+  margin-bottom: 8px;
+}
+
+.dashboard-summary-grid .summary-card strong {
+  font-size: 34px;
+  margin-bottom: 8px;
+}
+
+.dashboard-summary-grid .summary-card small {
+  font-size: 13px;
 }
 
 .progress-track {
@@ -517,12 +548,12 @@ button:hover:not(:disabled) {
 /* Smaller screens */
 @media (max-width: 900px) {
   .wireframe-page {
-    padding: 12px;
+    padding: 0;
   }
 
   .prototype-card,
   .dashboard-sized-card {
-    width: calc(100vw - 24px);
+    width: 100%;
   }
 
   .filter-bar,
@@ -644,9 +675,9 @@ button:hover:not(:disabled) {
 }
 
 .staff-schedule-shell {
-  max-width: 1360px;
+  width: min(1280px, calc(100% - 64px));
   margin: 0 auto;
-  padding: 40px 32px 64px;
+  padding: 40px 0 64px;
 }
 
 .staff-page-heading {
@@ -749,9 +780,6 @@ button:hover:not(:disabled) {
   padding: 6px 12px;
   font-size: 13px;
   font-weight: 800;
-}
-
-.staff-type-pill {
   background: #eef4ff;
   color: #2563eb;
 }
@@ -864,6 +892,7 @@ button:hover:not(:disabled) {
     overflow-x: auto;
   }
 }
+
 /* Staff schedule coverage-needed card */
 .coverage-card {
   background: #ffffff;
