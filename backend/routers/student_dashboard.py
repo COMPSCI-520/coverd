@@ -5,8 +5,8 @@ from dependencies.auth import get_current_user
 from dependencies.database import get_db
 from models.user import User
 from repositories.student_dashboard_repository import StudentDashboardRepository
-from schemas.dashboard import StudentDashboardResponse, StudentRequestsResponse
-from services.student_dashboard_service import get_student_dashboard, get_student_requests
+from schemas.dashboard import StudentDashboardResponse, StudentRequestsResponse, MyScheduleResponse
+from services.student_dashboard_service import get_student_dashboard, get_student_requests, get_student_month_schedule, get_student_month_schedule
 
 router = APIRouter(prefix="/students", tags=["Student Dashboard"])
 
@@ -27,3 +27,19 @@ def read_student_requests(
 ):
     repo = StudentDashboardRepository(db)
     return get_student_requests(current_user, repo)
+
+@router.get("/me/schedule", response_model=MyScheduleResponse)
+def read_student_schedule(
+    month: int,
+    year: int,
+    current_user: User = Depends(get_current_user),
+    db: Database = Depends(get_db),
+):
+    repo = StudentDashboardRepository(db)
+
+    return get_student_month_schedule(
+        current_user,
+        repo,
+        month,
+        year,
+    )

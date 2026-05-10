@@ -149,8 +149,9 @@ export default function ShiftMarketplace() {
           <div className="brand">coverd</div>
 
           <div className="app-tabs">
-            <button onClick={() => navigate("/dashboard")}>Dashboard</button>
-            <button className="selected">Marketplace</button>
+              <button onClick={() => navigate("/dashboard")}>Dashboard</button>
+              <button className="selected">Marketplace</button>
+              <button onClick={() => navigate("/my-schedule")}>My Schedule</button>   
           </div>
 
           <div className="nav-user">

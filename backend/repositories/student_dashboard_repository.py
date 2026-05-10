@@ -68,3 +68,22 @@ class StudentDashboardRepository:
                 except Exception:
                     pass
         return requests
+    
+    def get_student_month_shifts(
+        self,
+        student_id: str,
+        month_start: str,
+        month_end: str,
+    ) -> list[dict]:
+        return list(
+            self._shifts.find(
+                {
+                    "student_id": student_id,
+                    "status": {"$in": ["assigned", "pending"]},
+                    "shift_date": {
+                        "$gte": month_start,
+                        "$lte": month_end,
+                    },
+                }
+            ).sort([("shift_date", 1), ("start_time", 1)])
+        )
