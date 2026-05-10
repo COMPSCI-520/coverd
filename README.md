@@ -104,6 +104,7 @@ coverd/
 │   ├── services/              # Business logic
 │   ├── main.py                # FastAPI application entry point
 │   ├── seed.py                # Demo data seed script
+│   ├── seed_fixtures.json     # Optional seed volume / options
 │   ├── requirements.txt       # Python dependencies
 │   └── Dockerfile             # Backend Docker build file
 │
@@ -201,7 +202,7 @@ docker compose down -v
 
 ## Seeding Demo Data
 
-The project includes a seed script that creates demo users, shifts, marketplace shifts, and sample shift requests.
+The project includes a seed script that creates the main demo accounts, many generated student accounts (`student001@coverd.dev`, …), shifts for them, marketplace listings, and sample drop requests (pending / denied / approved). Optional tuning lives in `backend/seed_fixtures.json`.
 
 After the containers are running, run:
 
@@ -220,6 +221,8 @@ Manager:
 Email: manager@coverd.dev
 Password: manager123
 ~~~
+
+Additional seeded students share the `bulk_student_password` from `backend/seed_fixtures.json` (default `student123`).
 
 ---
 

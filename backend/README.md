@@ -34,6 +34,7 @@ backend/
 ├── services/              # Business logic layer
 ├── main.py                # FastAPI application entry point
 ├── seed.py                # Demo data seed script
+├── seed_fixtures.json     # Optional: tune seed counts (merged by seed.py)
 ├── requirements.txt       # Python dependencies
 └── Dockerfile             # Backend Docker build file
 ~~~
@@ -164,7 +165,9 @@ uvicorn main:app --reload
 
 ## Seeding Demo Data
 
-The seed script creates demo users, assigned shifts, available marketplace shifts, and sample shift requests.
+The seed script creates the primary demo accounts, many generated students (`student001@coverd.dev`, …), assigned shifts for those students, marketplace postings, and sample drop requests (pending, denied, and approved) aligned with manager workflows.
+
+Optional tuning: edit [`seed_fixtures.json`](seed_fixtures.json) in this folder to override counts and dates under `options`, or add `additional_users` (same fields as in `seed.py`) without changing how you run the script. If the file is missing, built-in defaults apply.
 
 If the backend container is already running:
 
@@ -181,8 +184,10 @@ Password: student123
 
 Manager:
 Email: manager@coverd.dev
-Password: manager123
+Password: student123
 ~~~
+
+Bulk demo students use the password set in `seed_fixtures.json` (`bulk_student_password`, default `student123`), e.g. `student001@coverd.dev` through `student040@coverd.dev` (adjust `generated_student_count` as needed).
 
 ---
 
