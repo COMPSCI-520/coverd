@@ -1,8 +1,8 @@
 from services.student_dashboard_service import (
     get_student_dashboard,
     get_student_month_schedule,
+    get_student_requests,
 )
-
 
 class FakeStudentUser:
     def __init__(
@@ -23,6 +23,7 @@ class FakeStudentDashboardRepo:
         self.pending_count = 0
         self.marketplace_count = 0
         self.month_shifts = []
+        self.student_requests = []
 
     def get_student_weekly_shifts(self, student_id, week_start, week_end):
         return self.weekly_shifts
@@ -38,6 +39,9 @@ class FakeStudentDashboardRepo:
 
     def get_student_month_shifts(self, student_id, month_start, month_end):
         return self.month_shifts
+    
+    def get_student_requests(self, student_id):
+        return self.student_requests
 
 
 def test_student_dashboard_calculates_hours_and_remaining_limit():
@@ -167,3 +171,34 @@ def test_student_month_schedule_handles_empty_month():
     assert response.month == 7
     assert response.year == 2026
     assert response.shifts == []
+
+def test_get_student_requests_maps_request_and_shift_data():
+    repo = FakeStudentDashboardRepo()
+    repo.student_requests = [
+        {
+            "_id": "request-1",
+            "request_type": "drop",
+            "status": "pending",
+            "created_at": "2026-06-08T10:00:00Z",
+            "reviewed_at": None,
+            "shift": {
+                "_id": "shift-1",
+                "location": "Worcester DC",
+                "shift_date": "2026-06-08",
+                "start_time": "08:00",
+                "end_time": "12:00",
+                "hours": 4.0,
+            },
+        }
+    ]
+
+    user = FakeStudentUser()
+
+    response = get_student_requests(user, repo)
+
+    assert response.total == 1
+    assert response.requests[0].id == "request-1"
+    assert response.requests[0].request_type == "drop"
+    assert response.requests[0].status == "pending"
+    assert response.requests[0].shift.location == "Worcester DC"
+    assert response.requests[0].shift.hours == 4.0
