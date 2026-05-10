@@ -1,4 +1,5 @@
 from datetime import date, datetime, timedelta
+import calendar
 
 from models.user import User
 from repositories.student_dashboard_repository import StudentDashboardRepository
@@ -9,6 +10,7 @@ from schemas.dashboard import (
     StudentRequestItem,
     StudentRequestShiftInfo,
     StudentRequestsResponse,
+    MyScheduleResponse,
 )
 
 
@@ -139,3 +141,44 @@ def get_student_requests(
         )
 
     return StudentRequestsResponse(requests=items, total=len(items))
+
+def get_student_month_schedule(
+    current_user: User,
+    repo: StudentDashboardRepository,
+    month: int,
+    year: int,
+) -> MyScheduleResponse:
+
+    first_day = date(year, month, 1)
+
+    last_day = date(
+        year,
+        month,
+        calendar.monthrange(year, month)[1],
+    )
+
+    docs = repo.get_student_month_shifts(
+        current_user.id,
+        first_day.isoformat(),
+        last_day.isoformat(),
+    )
+
+    shifts = [
+        DashboardShiftItem(
+            id=str(shift["_id"]),
+            shift_date=shift["shift_date"],
+            day=_format_day_name(shift["shift_date"]),
+            location=shift["location"],
+            start_time=shift["start_time"],
+            end_time=shift["end_time"],
+            hours=float(shift["hours"]),
+            status=shift["status"],
+        )
+        for shift in docs
+    ]
+
+    return MyScheduleResponse(
+        month=month,
+        year=year,
+        shifts=shifts,
+    )

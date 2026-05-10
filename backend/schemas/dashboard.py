@@ -43,6 +43,11 @@ class DashboardShiftItem(BaseModel):
     hours: float
     status: str
 
+class MyScheduleResponse(BaseModel):
+    month: int
+    year: int
+    shifts: list[DashboardShiftItem]
+
 
 class StudentDashboardResponse(BaseModel):
     full_name: str
