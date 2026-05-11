@@ -6,8 +6,16 @@ Backend unit tests were implemented using Pytest for service, repository, router
 
 ## Integration/System Testing
 
-| ID | Test Scenario | Steps | Expected Result | Actual Result | Status |
-| -- | ------------- | ----- | --------------- | ------------- | ------ |
+API-based integration smoke testing was performed using `scripts/integration_smoke_test.py`.
+
+Automated checks passed:
+- Student dashboard loads
+- Marketplace loads
+- Staff schedule loads
+- Student is blocked from manager routes
+- Manager requests load
+
+Manual browser testing will be used for the remaining workflows that require UI interaction, such as claiming shifts, requesting drops, approving/denying requests, and checking filters.
 
 ## Concurrency Test Results
 

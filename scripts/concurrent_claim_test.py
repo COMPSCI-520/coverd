@@ -13,8 +13,7 @@ STUDENT_2 = {
     "password": "student123",
 }
 
-# Replace this with an actual available shift ID from /marketplace/shifts.
-SHIFT_ID = "PASTE_AVAILABLE_SHIFT_ID_HERE"
+SHIFT_ID = "6a01464e870b75c28884d7d2"
 
 
 def login(credentials):
