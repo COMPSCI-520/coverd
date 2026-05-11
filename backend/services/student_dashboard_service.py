@@ -42,6 +42,8 @@ def get_student_dashboard(
         week_end_str,
     )
 
+    pending_drop_shift_ids = repo.get_shift_ids_with_pending_drop_requests(current_user.id)
+
     upcoming_shift_docs = repo.get_upcoming_student_shifts(current_user.id, today_str)
     pending_requests_count = repo.count_pending_requests(current_user.id)
 
@@ -76,6 +78,7 @@ def get_student_dashboard(
             end_time=shift["end_time"],
             hours=float(shift["hours"]),
             status=shift["status"],
+            has_pending_drop=str(shift["_id"]) in pending_drop_shift_ids,
         )
         for shift in weekly_shift_docs
     ]
@@ -163,6 +166,8 @@ def get_student_month_schedule(
         last_day.isoformat(),
     )
 
+    pending_drop_shift_ids = repo.get_shift_ids_with_pending_drop_requests(current_user.id)
+
     shifts = [
         DashboardShiftItem(
             id=str(shift["_id"]),
@@ -173,6 +178,7 @@ def get_student_month_schedule(
             end_time=shift["end_time"],
             hours=float(shift["hours"]),
             status=shift["status"],
+            has_pending_drop=str(shift["_id"]) in pending_drop_shift_ids,
         )
         for shift in docs
     ]

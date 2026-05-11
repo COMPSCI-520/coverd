@@ -235,11 +235,17 @@ export default function MySchedule() {
                           <td>{shift.hours}h</td>
 
                           <td>
-                            <span className="status-pill status-available">
-                              {shift.status === "assigned"
-                                ? "Confirmed"
-                                : shift.status}
-                            </span>
+                            {shift.has_pending_drop ? (
+                              <span className="status-pill status-pending">
+                                Pending drop
+                              </span>
+                            ) : (
+                              <span className="status-pill status-available">
+                                {shift.status === "assigned"
+                                  ? "Confirmed"
+                                  : shift.status}
+                              </span>
+                            )}
                           </td>
                         </tr>
                       ))}
