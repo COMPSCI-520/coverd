@@ -16,7 +16,6 @@ FIXTURE_PATH = Path(__file__).resolve().parent / "seed_fixtures.json"
 DEFAULT_OPTIONS: dict = {
     "generated_student_count": 40,
     "calendar_weeks": 5,
-    "anchor_week_start": "2026-05-04",
     "bulk_student_password": "student123",
     "marketplace_post_count": 28,
     "pending_drop_count": 14,
@@ -100,6 +99,43 @@ def _stable_seed(s: str) -> int:
     return sum(ord(c) for c in s)
 
 
+def _monday_of(d: date) -> date:
+    return d - timedelta(days=d.weekday())
+
+
+def _default_anchor_week_start(today: date) -> str:
+    """Monday of the week before `today` so seeded weeks span last week through upcoming weeks."""
+    return (_monday_of(today) - timedelta(weeks=1)).isoformat()
+
+
+def _drop_request_time_fields(shift_date_str: str, today: date, kind: str) -> dict:
+    """
+    Timestamps for synthetic drop requests: keep submitted/reviewed in the past
+    even when the shift itself is still in the future.
+    """
+    shift_d = date.fromisoformat(shift_date_str)
+    anchor = min(shift_d, today)
+    submitted_day = anchor - timedelta(days=1)
+    if kind == "pending":
+        return {
+            "created_at": f"{submitted_day.isoformat()}T14:00:00Z",
+            "reviewed_by": None,
+            "reviewed_at": None,
+        }
+    if kind == "denied":
+        return {
+            "created_at": f"{submitted_day.isoformat()}T09:15:00Z",
+            "reviewed_by": None,
+            "reviewed_at": f"{submitted_day.isoformat()}T16:30:00Z",
+        }
+    # approved
+    return {
+        "created_at": f"{submitted_day.isoformat()}T11:00:00Z",
+        "reviewed_by": None,
+        "reviewed_at": f"{submitted_day.isoformat()}T11:45:00Z",
+    }
+
+
 def load_fixture_bundle() -> tuple[dict, list[dict]]:
     merged = dict(DEFAULT_OPTIONS)
     extra_users: list[dict] = []
@@ -153,10 +189,36 @@ def build_demo_users(options: dict, extra_fixtures: list[dict] | None = None) ->
     return users
 
 
-def build_legacy_shift_specs(user_ids: dict[str, str]) -> list[SeededShift]:
+def build_legacy_shift_specs(user_ids: dict[str, str], today: date) -> list[SeededShift]:
+    """Fixed narrative rows anchored to `today` so demos stay plausible year-round."""
     student_id = user_ids["student@coverd.dev"]
     taylor_id = user_ids["taylor@coverd.dev"]
     maya_id = user_ids["maya@coverd.dev"]
+    monday = _monday_of(today)
+
+    last_week_mon = monday - timedelta(days=7)
+    denied_shift = last_week_mon + timedelta(days=1)
+    maya_pending_shift = monday + timedelta(days=1)
+    taylor_post_a = monday + timedelta(days=2)
+    maya_post = monday + timedelta(days=3)
+    taylor_post_b = monday + timedelta(days=5)
+    alex_far_a = monday + timedelta(weeks=4)
+    alex_far_b = monday + timedelta(weeks=4, days=2)
+    alex_far_c = monday + timedelta(weeks=7)
+    alex_far_d = monday + timedelta(weeks=7, days=4)
+
+    denied_req = {
+        "request_type": "drop",
+        "requested_by": student_id,
+        "status": "denied",
+        **_drop_request_time_fields(denied_shift.isoformat(), today, "denied"),
+    }
+    maya_pending_req = {
+        "request_type": "drop",
+        "requested_by": maya_id,
+        "status": "pending",
+        **_drop_request_time_fields(maya_pending_shift.isoformat(), today, "pending"),
+    }
 
     return [
         SeededShift(
@@ -164,7 +226,7 @@ def build_legacy_shift_specs(user_ids: dict[str, str]) -> list[SeededShift]:
                 "student_id": student_id,
                 "posted_by": None,
                 "location": "Franklin Dining",
-                "shift_date": "2026-05-04",
+                "shift_date": last_week_mon.isoformat(),
                 "start_time": "09:00",
                 "end_time": "13:00",
                 "hours": 4.0,
@@ -176,27 +238,20 @@ def build_legacy_shift_specs(user_ids: dict[str, str]) -> list[SeededShift]:
                 "student_id": student_id,
                 "posted_by": None,
                 "location": "Berkshire DC",
-                "shift_date": "2026-05-05",
+                "shift_date": denied_shift.isoformat(),
                 "start_time": "17:00",
                 "end_time": "21:00",
                 "hours": 4.0,
                 "status": "assigned",
             },
-            drop_request={
-                "request_type": "drop",
-                "requested_by": student_id,
-                "status": "denied",
-                "created_at": "2026-05-04T08:30:00Z",
-                "reviewed_by": None,
-                "reviewed_at": "2026-05-04T11:00:00Z",
-            },
+            drop_request=denied_req,
         ),
         SeededShift(
             doc={
                 "student_id": student_id,
                 "posted_by": None,
                 "location": "Worcester DC",
-                "shift_date": "2026-05-06",
+                "shift_date": (last_week_mon + timedelta(days=2)).isoformat(),
                 "start_time": "10:00",
                 "end_time": "15:00",
                 "hours": 5.0,
@@ -208,7 +263,7 @@ def build_legacy_shift_specs(user_ids: dict[str, str]) -> list[SeededShift]:
                 "student_id": None,
                 "posted_by": taylor_id,
                 "location": "Franklin Dining",
-                "shift_date": "2026-05-07",
+                "shift_date": taylor_post_a.isoformat(),
                 "start_time": "10:00",
                 "end_time": "13:00",
                 "hours": 3.0,
@@ -220,7 +275,7 @@ def build_legacy_shift_specs(user_ids: dict[str, str]) -> list[SeededShift]:
                 "student_id": None,
                 "posted_by": maya_id,
                 "location": "Berkshire DC",
-                "shift_date": "2026-05-08",
+                "shift_date": maya_post.isoformat(),
                 "start_time": "16:00",
                 "end_time": "19:30",
                 "hours": 3.5,
@@ -232,7 +287,7 @@ def build_legacy_shift_specs(user_ids: dict[str, str]) -> list[SeededShift]:
                 "student_id": None,
                 "posted_by": taylor_id,
                 "location": "Hampshire DC",
-                "shift_date": "2026-05-09",
+                "shift_date": taylor_post_b.isoformat(),
                 "start_time": "12:00",
                 "end_time": "19:30",
                 "hours": 7.5,
@@ -244,27 +299,20 @@ def build_legacy_shift_specs(user_ids: dict[str, str]) -> list[SeededShift]:
                 "student_id": maya_id,
                 "posted_by": maya_id,
                 "location": "Worcester DC",
-                "shift_date": "2026-05-10",
+                "shift_date": maya_pending_shift.isoformat(),
                 "start_time": "08:00",
                 "end_time": "11:00",
                 "hours": 3.0,
                 "status": "pending",
             },
-            drop_request={
-                "request_type": "drop",
-                "requested_by": maya_id,
-                "status": "pending",
-                "created_at": "2026-05-05T10:00:00Z",
-                "reviewed_by": None,
-                "reviewed_at": None,
-            },
+            drop_request=maya_pending_req,
         ),
         SeededShift(
             doc={
                 "student_id": student_id,
                 "posted_by": None,
                 "location": "Franklin Dining",
-                "shift_date": "2026-06-08",
+                "shift_date": alex_far_a.isoformat(),
                 "start_time": "08:00",
                 "end_time": "12:00",
                 "hours": 4.0,
@@ -276,7 +324,7 @@ def build_legacy_shift_specs(user_ids: dict[str, str]) -> list[SeededShift]:
                 "student_id": student_id,
                 "posted_by": None,
                 "location": "Berkshire DC",
-                "shift_date": "2026-06-10",
+                "shift_date": alex_far_b.isoformat(),
                 "start_time": "16:00",
                 "end_time": "20:00",
                 "hours": 4.0,
@@ -288,7 +336,7 @@ def build_legacy_shift_specs(user_ids: dict[str, str]) -> list[SeededShift]:
                 "student_id": student_id,
                 "posted_by": None,
                 "location": "Worcester DC",
-                "shift_date": "2026-07-03",
+                "shift_date": alex_far_c.isoformat(),
                 "start_time": "10:00",
                 "end_time": "15:00",
                 "hours": 5.0,
@@ -300,7 +348,7 @@ def build_legacy_shift_specs(user_ids: dict[str, str]) -> list[SeededShift]:
                 "student_id": student_id,
                 "posted_by": None,
                 "location": "Hampshire Dining",
-                "shift_date": "2026-07-15",
+                "shift_date": alex_far_d.isoformat(),
                 "start_time": "12:00",
                 "end_time": "17:00",
                 "hours": 5.0,
@@ -404,6 +452,7 @@ def _collect_assigned_candidates(specs: list[SeededShift]) -> list[int]:
 def attach_synthetic_drop_requests(
     specs: list[SeededShift],
     options: dict,
+    today: date,
 ) -> None:
     pending_n = int(options["pending_drop_count"])
     denied_n = int(options["denied_drop_count"])
@@ -427,25 +476,23 @@ def attach_synthetic_drop_requests(
         sid = s.doc["student_id"]
         s.doc["status"] = "pending"
         s.doc["posted_by"] = sid
+        times = _drop_request_time_fields(s.doc["shift_date"], today, "pending")
         s.drop_request = {
             "request_type": "drop",
             "requested_by": sid,
             "status": "pending",
-            "created_at": f"{s.doc['shift_date']}T14:00:00Z",
-            "reviewed_by": None,
-            "reviewed_at": None,
+            **times,
         }
 
     for i in take(denied_n):
         s = specs[i]
         sid = s.doc["student_id"]
+        times = _drop_request_time_fields(s.doc["shift_date"], today, "denied")
         s.drop_request = {
             "request_type": "drop",
             "requested_by": sid,
             "status": "denied",
-            "created_at": f"{s.doc['shift_date']}T09:15:00Z",
-            "reviewed_by": None,
-            "reviewed_at": f"{s.doc['shift_date']}T16:30:00Z",
+            **times,
         }
 
     for _ in range(approved_n):
@@ -458,13 +505,12 @@ def attach_synthetic_drop_requests(
         s.doc["student_id"] = None
         s.doc["status"] = "available"
         s.doc["posted_by"] = sid
+        times = _drop_request_time_fields(s.doc["shift_date"], today, "approved")
         s.drop_request = {
             "request_type": "drop",
             "requested_by": sid,
             "status": "approved",
-            "created_at": f"{s.doc['shift_date']}T11:00:00Z",
-            "reviewed_by": None,
-            "reviewed_at": f"{s.doc['shift_date']}T11:45:00Z",
+            **times,
         }
 
 
@@ -479,18 +525,58 @@ def _bulk_only_emails(student_emails: list[str]) -> list[str]:
     return sorted(e for e in student_emails if _BULK_STUDENT_EMAIL.match(e))
 
 
+def build_alex_droppable_week_shifts(user_ids: dict[str, str], today: date) -> list[SeededShift]:
+    """
+    Extra assigned shifts for the primary demo student (Alex) in the current ISO week.
+
+    Core demo email is excluded from bulk generation; without these rows the dashboard
+    "This week's shifts" list is often empty. Afternoon slots stay droppable during daytime demos.
+    """
+    sid = user_ids["student@coverd.dev"]
+    monday = _monday_of(today)
+    sunday = monday + timedelta(days=6)
+    loc_cycle = ["Franklin Dining", "Berkshire DC", "Worcester DC", "Hampshire Dining"]
+    out: list[SeededShift] = []
+    d = today
+    i = 0
+    # Four-hour blocks only so international 20h/week cap stays realistic with legacy rows.
+    while d <= sunday and len(out) < 4:
+        out.append(
+            SeededShift(
+                doc={
+                    "student_id": sid,
+                    "posted_by": None,
+                    "location": loc_cycle[i % len(loc_cycle)],
+                    "shift_date": d.isoformat(),
+                    "start_time": "16:00",
+                    "end_time": "20:00",
+                    "hours": 4.0,
+                    "status": "assigned",
+                }
+            )
+        )
+        d += timedelta(days=1)
+        i += 1
+    return out
+
+
 def build_all_shift_specs(
     demo_users: list[dict],
     user_ids: dict[str, str],
     options: dict,
 ) -> list[SeededShift]:
+    today = date.today()
+    opts = dict(options)
+    opts["anchor_week_start"] = _default_anchor_week_start(today)
+
     student_emails = _student_emails_from_roster(demo_users)
     bulk_emails = _bulk_only_emails(student_emails)
-    legacy = build_legacy_shift_specs(user_ids)
-    bulk = build_bulk_assigned_shifts(bulk_emails, user_ids, options)
-    attach_synthetic_drop_requests(bulk, options)
-    marketplace = build_marketplace_posts(student_emails, user_ids, options)
-    return legacy + bulk + marketplace
+    legacy = build_legacy_shift_specs(user_ids, today)
+    bulk = build_bulk_assigned_shifts(bulk_emails, user_ids, opts)
+    attach_synthetic_drop_requests(bulk, opts, today)
+    alex_week = build_alex_droppable_week_shifts(user_ids, today)
+    marketplace = build_marketplace_posts(student_emails, user_ids, opts)
+    return legacy + bulk + alex_week + marketplace
 
 
 def seed() -> None:

@@ -2,7 +2,6 @@
   "options": {
     "generated_student_count": 40,
     "calendar_weeks": 5,
-    "anchor_week_start": "2026-05-04",
     "bulk_student_password": "student123",
     "marketplace_post_count": 28,
     "pending_drop_count": 14,
