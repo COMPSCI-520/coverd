@@ -24,6 +24,7 @@ class FakeStudentDashboardRepo:
         self.marketplace_count = 0
         self.month_shifts = []
         self.student_requests = []
+        self.pending_drop_shift_ids: set[str] = set()
 
     def get_student_weekly_shifts(self, student_id, week_start, week_end):
         return self.weekly_shifts
@@ -36,6 +37,9 @@ class FakeStudentDashboardRepo:
 
     def count_marketplace_available_this_week(self, week_start, week_end):
         return self.marketplace_count
+
+    def get_shift_ids_with_pending_drop_requests(self, student_id):
+        return set(self.pending_drop_shift_ids)
 
     def get_student_month_shifts(self, student_id, month_start, month_end):
         return self.month_shifts
@@ -100,6 +104,29 @@ def test_domestic_student_has_no_weekly_limit_warning():
     assert response.hours_this_week == 0
     assert response.upcoming_shifts_count == 0
     assert response.next_shift is None
+
+
+def test_student_dashboard_marks_weekly_shift_pending_drop_from_requests():
+    repo = FakeStudentDashboardRepo()
+    repo.weekly_shifts = [
+        {
+            "_id": "shift-1",
+            "shift_date": "2026-06-08",
+            "location": "Worcester DC",
+            "start_time": "08:00",
+            "end_time": "12:00",
+            "hours": 4.0,
+            "status": "assigned",
+        },
+    ]
+    repo.upcoming_shifts = repo.weekly_shifts
+    repo.pending_drop_shift_ids = {"shift-1"}
+
+    user = FakeStudentUser()
+
+    response = get_student_dashboard(user, repo)
+
+    assert response.weekly_shifts[0].has_pending_drop is True
 
 
 def test_student_dashboard_handles_no_upcoming_shifts():

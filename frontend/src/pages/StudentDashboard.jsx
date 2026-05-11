@@ -58,7 +58,13 @@ function isPastShift(shiftDate, endTime) {
   return shiftEnd < now;
 }
 
-function StatusBadge({ status }) {
+function StatusBadge({ status, hasPendingDrop }) {
+  if (hasPendingDrop) {
+    return (
+      <span className="status-pill status-pending">Pending drop</span>
+    );
+  }
+
   const normalized = status?.toLowerCase();
 
   if (normalized === "assigned") {
@@ -270,10 +276,13 @@ export default function StudentDashboard() {
                       shift.end_time
                     );
 
+                    const pendingDrop = Boolean(shift.has_pending_drop);
+
                     const disabled =
                       droppingId === shift.id ||
                       shift.status !== "assigned" ||
-                      completed;
+                      completed ||
+                      pendingDrop;
 
                     return (
                       <tr key={shift.id}>
@@ -285,7 +294,10 @@ export default function StudentDashboard() {
                         </td>
                         <td>{shift.hours}h</td>
                         <td>
-                          <StatusBadge status={shift.status} />
+                          <StatusBadge
+                            status={shift.status}
+                            hasPendingDrop={pendingDrop}
+                          />
                         </td>
 
                         <td className="table-action">
@@ -295,15 +307,19 @@ export default function StudentDashboard() {
                             title={
                               completed
                                 ? "This shift is already completed and cannot be dropped."
-                                : ""
+                                : pendingDrop
+                                  ? "A drop request is already awaiting manager approval."
+                                  : ""
                             }
                             onClick={() => handleDrop(shift.id)}
                           >
                             {completed
                               ? "Completed"
-                              : droppingId === shift.id
-                                ? "Requesting…"
-                                : "Drop"}
+                              : pendingDrop
+                                ? "Pending"
+                                : droppingId === shift.id
+                                  ? "Requesting…"
+                                  : "Drop"}
                           </button>
                         </td>
                       </tr>

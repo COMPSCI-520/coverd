@@ -42,6 +42,17 @@ class StudentDashboardRepository:
             }
         )
 
+    def get_shift_ids_with_pending_drop_requests(self, student_id: str) -> set[str]:
+        cursor = self._shift_requests.find(
+            {
+                "requested_by": student_id,
+                "request_type": "drop",
+                "status": "pending",
+            },
+            {"shift_id": 1},
+        )
+        return {doc["shift_id"] for doc in cursor if doc.get("shift_id")}
+
     def count_marketplace_available_this_week(
         self,
         week_start: str,

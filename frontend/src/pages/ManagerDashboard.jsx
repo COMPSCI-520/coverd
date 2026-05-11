@@ -152,7 +152,14 @@ export default function ManagerDashboard() {
     try {
       const authToken = token();
       const res = await getRequests(authToken, statusFilter === "all" ? null : statusFilter);
-      setRequests(res.requests ?? []);
+      const raw = res.requests ?? [];
+      const sortKey = (iso) => {
+        if (!iso) return 0;
+        const t = Date.parse(iso);
+        return Number.isFinite(t) ? t : 0;
+      };
+      raw.sort((a, b) => sortKey(b.created_at) - sortKey(a.created_at));
+      setRequests(raw);
     } catch {
       setError("Could not load requests. Please try again.");
     } finally {

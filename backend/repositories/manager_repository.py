@@ -15,7 +15,9 @@ class ManagerRepository:
         if status_filter:
             query["status"] = status_filter
 
-        requests = list(self._requests.find(query).sort("created_at", -1))
+        requests = list(
+            self._requests.find(query).sort([("created_at", -1), ("_id", -1)])
+        )
 
         for req in requests:
             shift_id = req.get("shift_id")
@@ -71,7 +73,10 @@ class ManagerRepository:
             try:
                 self._shifts.update_one(
                     {"_id": ObjectId(shift_id)},
-                    {"$set": {"status": "available", "student_id": None}},
+                    {
+                        "$set": {"status": "available", "student_id": None},
+                        "$unset": {"posted_by": ""},
+                    },
                 )
             except Exception:
                 pass
