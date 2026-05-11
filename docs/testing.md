@@ -13,9 +13,29 @@ Backend unit tests were implemented using Pytest for service, repository, router
 
 Concurrent shift claiming behavior was tested using simultaneous API requests from two student accounts.
 
+Tested shift ID:
+`6a01464e870b75c28884d7d2`
+
+Observed results:
+
+* Student 1 request returned `200 OK` with message: `"Shift claimed successfully"`
+* Student 2 request returned `409 Conflict` with message: `"Shift was claimed by someone else just now. Please refresh."`
+
+Expected behavior was that only one student should be able to successfully claim the shift while competing requests are rejected. The observed behavior matched the expected outcome, confirming that the backend prevents duplicate shift assignment under concurrent access conditions.
+
+
 ## Load/Performance Test Results
 
-Basic load testing was performed against dashboard endpoints using concurrent requests.
+Total requests: 50 
+Concurrent workers: 25 
+Successful responses: 50 
+Errors: 0 
+Average response time: 245.54 ms 
+Median response time: 246.37 ms 
+Max response time: 371.78 ms
+
+A basic load test was conducted against the student dashboard endpoint using 50 total requests and 25 concurrent workers. The endpoint returned successful responses without application errors, indicating that the backend can handle repeated concurrent dashboard requests under small course-project load.
+
 
 ## Usability Testing
 
