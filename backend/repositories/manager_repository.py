@@ -74,8 +74,11 @@ class ManagerRepository:
                 self._shifts.update_one(
                     {"_id": ObjectId(shift_id)},
                     {
-                        "$set": {"status": "available", "student_id": None},
-                        "$unset": {"posted_by": ""},
+                        "$set": {
+                            "status": "available",
+                            "student_id": None,
+                            "posted_by": req.get("requested_by"),
+                        },
                     },
                 )
             except Exception:
