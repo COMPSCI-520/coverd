@@ -42,6 +42,7 @@ class DashboardShiftItem(BaseModel):
     end_time: str
     hours: float
     status: str
+    has_pending_drop: bool = False
 
 class MyScheduleResponse(BaseModel):
     month: int

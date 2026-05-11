@@ -15,7 +15,9 @@ class MarketplaceRepository:
         Return future/today shifts that should appear in the marketplace table.
 
         available = claimable
-        pending = visible but not claimable, because a drop request is awaiting manager review
+        pending (legacy shift row status) = visible but not claimable
+        assigned + pending drop request = still on the poster's schedule until a
+        manager approves; shown here as not claimable
 
         Past shifts are excluded because students should not be able to claim shifts
         that have already happened.
@@ -30,6 +32,38 @@ class MarketplaceRepository:
                 }
             ).sort([("shift_date", 1), ("start_time", 1)])
         )
+        seen_ids = {str(d["_id"]) for d in docs}
+
+        pending_drop_shift_ids = self._requests.distinct(
+            "shift_id",
+            {"request_type": "drop", "status": "pending"},
+        )
+        extra_oids: list[ObjectId] = []
+        for sid in pending_drop_shift_ids:
+            if sid in seen_ids:
+                continue
+            try:
+                extra_oids.append(ObjectId(sid))
+            except Exception:
+                continue
+
+        if extra_oids:
+            assigned_pending_drop = list(
+                self._shifts.find(
+                    {
+                        "_id": {"$in": extra_oids},
+                        "status": "assigned",
+                        "shift_date": {"$gte": today},
+                    }
+                )
+            )
+            for shift in assigned_pending_drop:
+                sid = str(shift["_id"])
+                if sid not in seen_ids:
+                    docs.append(shift)
+                    seen_ids.add(sid)
+
+        docs.sort(key=lambda s: (s["shift_date"], s["start_time"]))
 
         for shift in docs:
             posted_by_id = shift.get("posted_by") or shift.get("student_id")
@@ -111,18 +145,5 @@ class MarketplaceRepository:
                 "reviewed_at": None,
             }
         )
-
-        try:
-            self._shifts.update_one(
-                {"_id": ObjectId(shift_id), "student_id": student_id, "status": "assigned"},
-                {
-                    "$set": {
-                        "status": "pending",
-                        "posted_by": student_id,
-                    }
-                },
-            )
-        except Exception:
-            pass
 
         return str(result.inserted_id)
